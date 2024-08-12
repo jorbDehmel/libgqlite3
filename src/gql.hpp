@@ -332,16 +332,16 @@ inline GQL::GQL(const std::string &_filepath,
     // Initialize
     sql("CREATE TABLE IF NOT EXISTS nodes ("
         "id INTEGER NOT NULL, "
-        "label TEXT, "
-        "tags TEXT, "
+        "label TEXT DEFAULT '', "
+        "tags TEXT DEFAULT '{}', "
         "PRIMARY KEY(id)"
         ");");
     sql("CREATE TABLE IF NOT EXISTS edges ("
         "id INTEGER NOT NULL, "
         "source INTEGER NOT NULL, "
         "target INTEGER NOT NULL, "
-        "label TEXT, "
-        "tags TEXT, "
+        "label TEXT DEFAULT '', "
+        "tags TEXT DEFAULT '{}', "
         "PRIMARY KEY(id), "
         "FOREIGN KEY(source) REFERENCES nodes(id), "
         "FOREIGN KEY(target) REFERENCES nodes(id)"
@@ -447,7 +447,8 @@ inline GQL::Vertices GQL::Vertices::traverse(
                     "JOIN (SELECT * FROM edges WHERE {}) e "
                     "ON t.id = e.source "
                     "JOIN (SELECT * FROM nodes WHERE {}) n "
-                    "ON e.target = n.id) "
+                    "ON e.target = n.id "
+                    "WHERE e.target IS NOT NULL) "
                     // End recursive call
                     "SELECT * FROM t JOIN nodes "
                     "ON t.id = nodes.id",
@@ -471,7 +472,8 @@ inline GQL::Vertices GQL::Vertices::r_traverse(
                     "JOIN (SELECT * FROM edges WHERE {}) e "
                     "ON t.id = e.target "
                     "JOIN (SELECT * FROM nodes WHERE {}) n "
-                    "ON e.source = n.id) "
+                    "ON e.source = n.id "
+                    "WHERE e.source IS NOT NULL) "
                     // End recursive call
                     "SELECT * FROM t JOIN nodes "
                     "ON t.id = nodes.id",

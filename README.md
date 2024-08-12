@@ -9,6 +9,8 @@ A simple Graph DataBase Manager (GDBM) library for `C++` using
 faster. No CLI is provided here (only `C++` lib), but one would
 be semitrivial to implement.
 
+Pronounced "geek-uel", rhyming with "sequel".
+
 ## Requirements
 
 This software assumes a POSIX-compliant environment. Do not
@@ -74,6 +76,154 @@ int main()
 ```sh
 clang++ -std=c++20 main.cpp -lsqlite3
 ```
+
+## Opening a Database Instance
+
+The `GQL` object provides an interface to a SQLite3 database. To
+open or create such a database, simply instantiate the object
+with the desired file path.
+
+```cpp
+// Open an existing graph, or create it if it doesn't exist
+GQL g("/path/to/database.db");
+
+// The same as above, but erase all graph data after loading
+GQL g2("/path/to/database.db", true);
+```
+
+A transaction is automatically opened upon instantiation, and
+the database is committed upon object destruction. The object
+also provides the `.commit()` method, which commits and opens a
+new transaction.
+
+**Note:** Since GQL is based on SQLite3, only one instance
+should be opened upon a given database. Additionally, one GQL
+object corresponds to exactly one property graph; Thus, to have
+multiple property graphs you must maintain multiple `.db` files.
+
+## Creating Graphs
+
+The GQL handler object provides a few methods for adding nodes
+and edges to the graph. Some basic ones are outlined in the code
+below.
+
+```cpp
+GQL g("foo.db", true);  // Open and erase
+
+g.add_vertex();         // Add a vertex with an unspecified ID
+g.add_vertex(100);      // Add a vertex with the ID 100
+
+auto node = g.add_vertex(); // Add a vertex and retrive it
+
+g.add_vertex().label("label");  // Create a node and label it
+
+// Associate the key "fizz" w/  the value "buzz" on node
+node.tag("fizz", "buzz");
+
+// Add an edge from node to 100 w/ the label "some edge" and the
+// key-value pair ("foo", "bar").
+g.add_edge(node, 100).label("some edge").tag("foo", "bar");
+
+```
+
+## Query Types
+
+There are three basic query types: `GQL::Vertices`, which
+represents a set of nodes on the graph, `GQL::Edges`, which
+represents a set of edges on the graph, and `GQL::Result`, which
+is a SQL result table composed of a vector of headers and a
+table body. All queries on vertices or edges will return either
+a subset of themselves, a subset of the opposite type (for
+instance, calling `target()` on edges returns `Vertices`) or a
+result table that cannot be queried.
+
+**Note:** Queries are not evaluated until a `Result`-returning
+query is called. The following code chunk demonstrates this.
+
+```cpp
+// No query is evaluated, since `GQL::v` returns a
+// `GQL::Vertices` object
+auto v_set = g.v();
+
+// Still no evaluation, since `GQL::Vertices::where` returns a
+// `GQL::Vertices` object
+auto v_subset = v_set.where("label = 'foo'");
+
+// *Now* the database is read, since `GQL::Vertices::id`
+// returns a GQL::Result object.
+auto ids_of_v_subset = v_subset.id();
+
+```
+
+## Basic Queries
+
+### Entering the Graph
+
+A GQL instance has a few functions to access its nodes and
+edges. For some GQL instance `g`, `g.v()` yields the set of all
+vertices and `g.e()` yields the set of all edges.
+`g.v("id = 1")` is the same as `g.v().where("id = 1")`, and
+`g.e("source = 1")` is the same as `g.e().where("source = 1")`.
+
+### From Vertices
+
+For some `GQL::Vertices` object `v`, `v.where("...")` yields a
+subset of `v` where the given condition holds.
+`v.with_label("...")` is the same as `v.where("label = '...'")`,
+and `v.with_tag("key", "value")` yields the subset of `v` where
+the tag `"key"` is associated with the value `"value"`. For
+another `GQL::Vertices` object `u`, `v.join(u)` yields all
+vertices in `u`, `v`, or both. `v.intersection(u)` gives us the set of vertices in both `u` and `v`. `v.complement(u)` yields
+the set of vertices in `u` but not `v`. Thus,
+`v.intersection(u).complement(v.join(u))` would yield
+$\texttt{u} \oplus \texttt{v}$.
+
+The `GQL::Vertices` object also provides several "terminal"
+(database accessing) operations which yield `GQL::Result`
+objects. For our earlier object `v`, `v.label()` will yield the
+IDs of all selected nodes, along with their labels. Similarly,
+`v.tag("key")` will yield the IDs along with the value
+associated with the given key. `v.id()` will yield the IDs with
+no extra information, and `v.select("...")` will perform the SQL
+`SELECT id, ... FROM (selected)`.
+
+The command `v.in()` will yield the set of all edges whose
+targets are in our selection, and the command `v.out()` will
+yield the set of all edges whose sources are in our selection.
+The command `v.label("...")` will set the labels of all nodes
+selected and `v.tag("fizz", "buzz")` will add a key-value pair
+to them. `v.erase()` will erase the selected nodes from the
+database.
+
+Finally, vertices provide traversal functions. The traversal
+function `v.traverse("edge case", "vertex case")` yields the
+set of all vertices where `"vertex case"` holds and which are
+reachable by edges for which `"edge case"` holds. This traversal
+follows edges from source to target, but the `v.r_traverse`
+(reverse traverse) function allows you to traverse from target
+to source. If no cases are provided, the function assumes they
+are tautologies.
+
+### From edges
+
+`GQL::Edges` objects provide the same definitions for `.where`,
+`.with_label`, `.with_tag`, `.join`, `.intersection` and
+`.complement` as `GQL::Vertices` does, except that they take and return only edges objects. `.select`, `.label`, `.tag` and
+`.erase` work the same as for `GQL::Vertices`. However, the
+edges object contains no traversal or reverse traversal
+functions, nor does it contain the `.in` and `.out` functions.
+Instead, it has `.source` and `.target`, which yield the
+vertices whose IDs are sources or targets in the edge set
+respectively.
+
+## Misc. Operations
+
+For a `GQL` object `g`, `g.v()` yields all vertices and `g.e()`
+yields all edges. The method `g.commit()` commits the database
+and opens a new transaction (a new transaction is opened at
+instantiation and a final commit is written upon destruction).
+Finally, `g.graphviz("foo.dot")` will save a graphviz (dot)
+representation of the graph to the specified file.
 
 ## Licensing
 

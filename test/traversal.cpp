@@ -6,6 +6,8 @@ Basic recursive traversal tests for GQL
 #include <gql.hpp>
 #include <initializer_list>
 #include <iostream>
+#include <stdexcept>
+#include <string>
 
 void assert_eq(const GQL::Result &_obs,
                const std::initializer_list<std::string> &_exp)
@@ -47,7 +49,7 @@ void assert_eq(const GQL::Result &_obs,
         }
         std::cout << '\n';
 
-        exit(1);
+        throw std::runtime_error("fail");
     }
 }
 
@@ -57,7 +59,7 @@ int main()
 
     for (uint64_t i = 1; i <= 5; ++i)
     {
-        g.add_vertex(i);
+        g.add_vertex(i).label(std::to_string(i));
     }
 
     // 1 -> 2 -> 3
@@ -80,11 +82,15 @@ int main()
     assert_eq(g.v("id = 1").traverse("nodes.id != 4").id(),
               {"1", "2", "3"});
 
-    g.e().where("source = 2 AND target = 4").label("DUMMY");
+    g.e()
+        .where("source = 2")
+        .where("target = 4")
+        .label("DUMMY");
 
-    assert_eq(
-        g.v("id = 1").traverse("1", "label != 'DUMMY'").id(),
-        {"1", "2", "3"});
+    assert_eq(g.v("id = 1")
+                  .traverse("1", "edges.label != 'DUMMY'")
+                  .id(),
+              {"1", "2", "3"});
 
     return 0;
 }
