@@ -1,0 +1,6 @@
+*.o
+*.out
+*.db
+*.db-journal
+*.log
+*.dot
