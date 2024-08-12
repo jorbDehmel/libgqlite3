@@ -1,6 +1,6 @@
 .PHONY:	install
 install:	src/gql.hpp
-	sudo cp src/gql.hpp /usr/include
+	sudo cp src/*.hpp /usr/include
 
 .PHONY:	format
 format:

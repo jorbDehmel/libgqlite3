@@ -16,15 +16,26 @@ Pronounced "geek-uel", rhyming with "sequel".
 This software assumes a POSIX-compliant environment. Do not
 assume or expect it to work on Windows.
 
-You must have the following packages installed:
-- `C++` 20 or later **with `std::format`** (`clang` works well)
+You must meet the following requirements:
+- `C++` 20 or later (`g++ -std=c++20` is used for testing)
 - `libsqlite3-dev` (the `C` headers, not just the CLI)
+
+**Warning:** This software relies on `std::format`, which is
+only sometimes provided. If it does not exist on your machine,
+this software is likely to run slower and be more bug-prone.
 
 ## Installation
 
 1) Clone this repo locally
 2) Navigate to this directory
+
+### Use Case 1: `#include <gql.hpp>` (system-wide install)
 3) From this directory, run `make install`
+
+### Use Case 2: `#include "./gql.hpp"` (casual local install)
+3) Simply copy-paste the local file `./src/gql.hpp` anywhere you
+    want to use it. This is allowed by the licensing without
+    acknowledgment
 
 ## Example
 
@@ -63,9 +74,9 @@ int main()
     // For each string in a list
     for (auto item : {"foo", "fizz", "buzz"})
     {
-        g                   // From the database `g`
-            .v("id < 100")  // Select all nodes with id < 100
-            .label(item);   // Set the label of these nodes
+        g                  // From the database `g`
+            .v("id < 100") // Select all nodes with id < 100
+            .label(item);  // Set the label of these nodes
     }
 
     return 0;
@@ -73,6 +84,7 @@ int main()
 
 ```
 
+Then compile as shown below (note the inclusion of `-lsqlite3`):
 ```sh
 clang++ -std=c++20 main.cpp -lsqlite3
 ```
@@ -228,4 +240,7 @@ representation of the graph to the specified file.
 ## Licensing
 
 This software uses the MIT license, which can be found in this
-directory.
+directory or in the header file itself. No citation or
+acknowledgment is needed or expected to use this software;
+You are free to simply copy-paste the header into anything you
+want.
