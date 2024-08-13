@@ -1,4 +1,5 @@
-TESTS := test.out readme_ex.out traversal.out make.out
+TESTS := test.out readme_ex.out traversal.out make.out \
+	stress_test.out
 
 CC := g++ -std=c++20
 LFLAGS := -pedantic -Wall -g -O3

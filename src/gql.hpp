@@ -561,7 +561,8 @@ inline GQL::Vertices GQL::Vertices::complement(
 {
     return GQL::Vertices(
         owner,
-        std::format("SELECT * FROM ({}) WHERE * NOT IN ({})",
+        std::format("SELECT * FROM ({}) WHERE id NOT IN "
+                    "(SELECT id FROM {})",
                     _universe.cmd, cmd),
         depth + 1);
 }
@@ -796,7 +797,8 @@ inline GQL::Edges GQL::Edges::complement(
 {
     return GQL::Edges(
         owner,
-        std::format("SELECT * FROM ({}) WHERE * NOT IN ({})",
+        std::format("SELECT * FROM ({}) WHERE id NOT IN "
+                    "(SELECT id FROM {})",
                     _universe.cmd, cmd),
         depth + 1);
 }
