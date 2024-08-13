@@ -159,9 +159,8 @@ a subset of themselves, a subset of the opposite type (for
 instance, calling `target()` on edges returns `Vertices`) or a
 result table that cannot be queried.
 
-**Note:** Queries are not evaluated until a `Result` or `void`
-returning query is called. The following code chunk demonstrates
-this.
+**Note:** Queries are not evaluated until a `Result`-returning
+or augmenting query is called.
 
 ```cpp
 // No query is evaluated, since `GQL::v` returns a
@@ -203,7 +202,8 @@ subset of `v` where the given condition holds.
 and `v.with_tag("key", "value")` yields the subset of `v` where
 the tag `"key"` is associated with the value `"value"`. For
 another `GQL::Vertices` object `u`, `v.join(u)` yields all
-vertices in `u`, `v`, or both. `v.intersection(u)` gives us the set of vertices in both `u` and `v`. `v.complement(u)` yields
+vertices in `u`, `v`, or both. `v.intersection(u)` gives us the
+set of vertices in both `u` and `v`. `v.complement(u)` yields
 the set of vertices in `u` but not `v`. Thus,
 `v.intersection(u).complement(v.join(u))` would yield
 $\texttt{u} \oplus \texttt{v}$.
@@ -245,7 +245,8 @@ are tautologies.
 
 `GQL::Edges` objects provide the same definitions for `.where`,
 `.with_label`, `.with_tag`, `.join`, `.intersection` and
-`.complement` as `GQL::Vertices` does, except that they take and return only edges objects. `.select`, `.label`, `.tag` and
+`.complement` as `GQL::Vertices` does, except that they take and
+return only edges objects. `.select`, `.label`, `.tag` and
 `.erase` work the same as for `GQL::Vertices`. However, the
 edges object contains no traversal or reverse traversal
 functions, nor does it contain the `.in` and `.out` functions.
@@ -259,7 +260,9 @@ For a `GQL` object `g`, `g.v()` yields all vertices and `g.e()`
 yields all edges. The method `g.commit()` commits the database
 and opens a new transaction (a new transaction is opened at
 instantiation and a final commit is written upon destruction).
-Finally, `g.graphviz("foo.dot")` will save a graphviz (dot)
+The method `g.rollback()` will revert the database to before the
+current transaction and begin a new one. Finally,
+`g.graphviz("foo.dot")` will save a graphviz (dot)
 representation of the graph to the specified file.
 
 ## Licensing

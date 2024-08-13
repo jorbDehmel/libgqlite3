@@ -38,8 +38,8 @@ int main()
 
         // Add divisibility edges
         g.v()
-            .where(std::format("MOD({}, id) = 0",
-                               cur, cur))
+            .where(std::format("id * id <= {}", cur))
+            .where(std::format("MOD({}, id) = 0", cur, cur))
             .add_edge(g.v().where(std::format("id = {}", cur)));
     }
 
