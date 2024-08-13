@@ -9,6 +9,16 @@ A simple Graph DataBase Manager (GDBM) library for `C++` using
 faster. No CLI is provided here (only `C++` lib), but one would
 be semitrivial to implement.
 
+A GQL object instance represents exactly one database file and
+exactly one property graph. The property graph $G$ managed is
+defined as $G = (V, E, \lambda, \mu)$, where $V$ is the set of
+vertices, $E$ is the set of edges,
+$\lambda: (E \cup V) \to \Sigma$ associates a label from an
+arbitrary label set $\Sigma$ to each edge and vertex, and
+$\mu: (E \cup V) \times K \to S$ associates keys from arbitrary
+key set $K$ to values from arbitrary value set $S$. In our case,
+$\Sigma, K$ and $S$ are all subsets of `std::string`.
+
 Pronounced "geek-uel", rhyming with "sequel".
 
 ## Requirements
@@ -149,8 +159,9 @@ a subset of themselves, a subset of the opposite type (for
 instance, calling `target()` on edges returns `Vertices`) or a
 result table that cannot be queried.
 
-**Note:** Queries are not evaluated until a `Result`-returning
-query is called. The following code chunk demonstrates this.
+**Note:** Queries are not evaluated until a `Result` or `void`
+returning query is called. The following code chunk demonstrates
+this.
 
 ```cpp
 // No query is evaluated, since `GQL::v` returns a
@@ -165,9 +176,16 @@ auto v_subset = v_set.where("label = 'foo'");
 // returns a GQL::Result object.
 auto ids_of_v_subset = v_subset.id();
 
+// This also calls the database, since the label setting
+// function is void.
+v_subset.label("fizz");
+
 ```
 
 ## Basic Queries
+
+**Note:** Assume that every terminal query is ordered by
+ascending ID: Even traversals.
 
 ### Entering the Graph
 
@@ -207,6 +225,13 @@ selected and `v.tag("fizz", "buzz")` will add a key-value pair
 to them. `v.erase()` will erase the selected nodes from the
 database.
 
+The command `v.with_in_degree(n, condition)` selects all nodes
+which have exactly `n` incoming edges for which `condition`
+holds. If no condition is provided, it is treated as a
+tautology. Similarly, `v.with_out_degree(n, condition)` selects
+all nodes which have exactly `n` outgoing edges for which
+`condition` holds.
+
 Finally, vertices provide traversal functions. The traversal
 function `v.traverse("edge case", "vertex case")` yields the
 set of all vertices where `"vertex case"` holds and which are
@@ -228,7 +253,7 @@ Instead, it has `.source` and `.target`, which yield the
 vertices whose IDs are sources or targets in the edge set
 respectively.
 
-## Misc. Operations
+### From the Graph Manager
 
 For a `GQL` object `g`, `g.v()` yields all vertices and `g.e()`
 yields all edges. The method `g.commit()` commits the database

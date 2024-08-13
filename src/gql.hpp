@@ -319,6 +319,16 @@ class GQL
 
         // Get all edges leading out of these vertices
         Edges out();
+
+        // Gets only the vertices with the given in degree
+        Vertices with_in_degree(
+            const uint64_t &_count,
+            const std::string &_where_edge = "1");
+
+        // Gets only the vertices with the given out degree
+        Vertices with_out_degree(
+            const uint64_t &_count,
+            const std::string &_where_edge = "1");
     };
 
     class Edges
@@ -430,6 +440,9 @@ class GQL
     // target
     Edges add_edge(const uint64_t &_source,
                    const uint64_t &_target);
+
+    // Increments with each SQL query submitted
+    uint64_t sql_call_counter = 0;
 
   protected:
     // Execute the given sql and return the results
@@ -654,8 +667,14 @@ inline void GQL::Vertices::erase()
 {
     owner->sql(
         std::format("DELETE FROM nodes WHERE id IN "
-                    "(SELECT s{}.id AS id FROM ({}) s{})",
+                    "(SELECT s{}.id AS id FROM ({}) s{});",
                     depth, cmd, depth));
+
+    // Erase dead edges
+    owner->sql("WITH ids AS (SELECT id FROM nodes) "
+               "DELETE FROM edges WHERE "
+               "source NOT IN ids "
+               "OR target NOT IN ids;");
 }
 
 inline GQL::Edges GQL::Vertices::in()
@@ -675,6 +694,40 @@ inline GQL::Edges GQL::Vertices::out()
         std::format("SELECT * FROM edges WHERE source IN "
                     "(SELECT s{}.id AS id FROM ({}) s{})",
                     depth, cmd, depth),
+        depth + 1);
+}
+
+inline GQL::Vertices GQL::Vertices::with_in_degree(
+    const uint64_t &_count, const std::string &_where_edge)
+{
+    return GQL::Vertices(
+        owner,
+        std::format(
+            "WITH n AS ({}) "
+            "SELECT id, label, tags FROM ("
+            "SELECT n.*, COUNT(e.id) AS c "
+            "FROM n LEFT JOIN (SELECT * FROM edges WHERE {}) e "
+            "ON e.target = n.id "
+            "GROUP BY n.id) t "
+            "WHERE t.c = {}",
+            cmd, _where_edge, _count),
+        depth + 1);
+}
+
+inline GQL::Vertices GQL::Vertices::with_out_degree(
+    const uint64_t &_count, const std::string &_where_edge)
+{
+    return GQL::Vertices(
+        owner,
+        std::format(
+            "WITH n AS ({}) "
+            "SELECT id, label, tags FROM ("
+            "SELECT n.*, COUNT(e.id) AS c "
+            "FROM n LEFT JOIN (SELECT * FROM edges WHERE {}) e "
+            "ON e.source = n.id "
+            "GROUP BY n.id) t "
+            "WHERE t.c = {}",
+            cmd, _where_edge, _count),
         depth + 1);
 }
 
@@ -888,6 +941,8 @@ inline GQL::Edges GQL::add_edge(const uint64_t &_source,
 
 inline GQL::Result GQL::sql(const std::string &_stmt)
 {
+    ++sql_call_counter;
+
     char *err_msg = nullptr;
     auto callback = [](void *out, int n_cols, char **col_vals,
                        char **col_names) {
