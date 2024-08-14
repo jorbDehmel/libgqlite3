@@ -2,9 +2,15 @@
 Tests the handling of very large graphs. This is an n^2
 algorithm on a large n. Time AND db space should be taken into
 account.
+
+Note: We cannot use <chrono>, as it forces you to include
+std::format, which messes up our backup build target.
+
+Using std::format   313 s
+Using custom format 304 s
+(basically the same)
 */
 
-#include <chrono>
 #include <gql.hpp>
 #include <iostream>
 
@@ -13,13 +19,13 @@ account.
 
 int main()
 {
-    std::chrono::high_resolution_clock::time_point start, stop;
-    uint64_t elapsed_ms;
+    uint64_t start, stop;
+    uint64_t elapsed_s;
 
     GQL g("/tmp/gql_stress_test.db", true);
 
     // Start timer
-    start = std::chrono::high_resolution_clock::now();
+    start = time(NULL);
 
     // Iterate over numbers in range
     for (uint64_t cur = START; cur < END; ++cur)
@@ -50,11 +56,8 @@ int main()
     g.v().with_in_degree(0).tag("prime", "true");
 
     // Stop timer
-    stop = std::chrono::high_resolution_clock::now();
-    elapsed_ms =
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            stop - start)
-            .count();
+    stop = time(NULL);
+    elapsed_s = stop - start;
 
     // Print primes
     auto primes = g.v().with_tag("prime", "true").id()["id"];
@@ -66,13 +69,14 @@ int main()
     // Print stats
     std::cout << "\nChecked " << END - START << " numbers for "
               << "primality, leading to " << g.sql_call_counter
-              << " DB calls in " << elapsed_ms << " ms. Final "
+              << " DB calls in " << elapsed_s << " s. Final "
               << "node count: " << g.v().id().size() << " final"
               << " edge count: " << g.e().id().size() << '\n'
               << "Found "
               << g.v().with_tag("prime", "true").id().size()
               << " primes.\nAverage ms / DB call: "
-              << (double)elapsed_ms / (double)g.sql_call_counter
+              << 1'000.0 * (double)elapsed_s /
+                     (double)g.sql_call_counter
               << '\n';
 
     return 0;
