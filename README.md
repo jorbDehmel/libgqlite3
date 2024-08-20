@@ -27,7 +27,7 @@ This software assumes a POSIX-compliant environment. Do not
 assume or expect it to work on Windows.
 
 You must meet the following requirements:
-- `C++` 20 or later (`g++ -std=c++20` is used for testing)
+- `C++` 11 or later (`g++ -std=c++20` is used for testing)
 - `libsqlite3-dev` (the `C` headers, not just the CLI)
 
 **Warning:** This software relies on `std::format`, which is

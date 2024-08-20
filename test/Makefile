@@ -1,5 +1,5 @@
 TESTS := test.out readme_ex.out traversal.out make.out \
-	stress_test.out
+	stress_test.out cpg.out
 FORMAT_TESTS := $(TESTS:%.out=%.format.out)
 
 CC := g++ -std=c++20

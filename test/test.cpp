@@ -240,6 +240,29 @@ void test_edge_queries()
     // Erase
     g.e().erase();
     assert(g.e().id().empty());
+
+    // Cross product insertion
+    g.add_vertex().label("1");
+    g.add_vertex().label("2");
+    g.add_vertex().label("3");
+
+    g.add_vertex().label("4");
+    g.add_vertex().label("5");
+
+    g.v("label IN ('1', '2', '3')")
+        .add_edge(g.v("label IN ('4', '5')"));
+
+    for (const std::string s : {"1", "2", "3"})
+    {
+        for (const std::string t : {"4", "5"})
+        {
+            assert(!g.e()
+                        .with_source(g.v().with_label(s))
+                        .with_target(g.v().with_label(t))
+                        .select()
+                        .empty());
+        }
+    }
 }
 
 void test_traversals()

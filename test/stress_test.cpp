@@ -2,15 +2,9 @@
 Tests the handling of very large graphs. This is an n^2
 algorithm on a large n. Time AND db space should be taken into
 account.
-
-Note: We cannot use <chrono>, as it forces you to include
-std::format, which messes up our backup build target.
-
-Using std::format   313 s
-Using custom format 304 s
-(basically the same)
 */
 
+#include <format>
 #include <gql.hpp>
 #include <iostream>
 

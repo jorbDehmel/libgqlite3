@@ -52,16 +52,19 @@ OTHER DEALINGS IN THE SOFTWARE.
 // The GQL version. This only ever increases with versions.
 // This can (and should) be used in static assertions to ensure
 // validity.
-#define GQL_VERSION 000'000'001ULL
+#define GQL_VERSION 000000002ULL
 
 // Uncomment to use custom format over std::format
 // #define FORCE_CUSTOM_FORMAT true
 
 // Assert compiler version
-static_assert(__cplusplus > 2020'00L);
+static_assert(__cplusplus > 201100L, "Invalid C++ std.");
 
-#if (__has_include(<format>) && !FORCE_CUSTOM_FORMAT)
+#if (__has_include(<format>) && \
+     __cplusplus >= 202000L && \
+     !FORCE_CUSTOM_FORMAT)
 #include <format>
+#define format_str std::format
 #else
 
 // Janky version of format, but good enough for our purposes
@@ -71,9 +74,11 @@ inline std::string to_string(const std::string &_what)
 {
     return _what;
 }
+} // namespace std
 
 template <typename... Types>
-std::string format(const std::string &_format, Types... _args)
+std::string format_str(const std::string &_format,
+                       Types... _args)
 {
     const std::vector<std::string> args = {
         std::to_string(_args)...};
@@ -144,7 +149,6 @@ std::string format(const std::string &_format, Types... _args)
     }
     return out;
 }
-} // namespace std
 
 #endif
 
@@ -225,7 +229,7 @@ class GQL
                                 _what);
             if (it == headers.end())
             {
-                throw std::runtime_error(std::format(
+                throw std::runtime_error(format_str(
                     "Header value '{}' is not present in "
                     "results.",
                     _what));
@@ -343,6 +347,8 @@ class GQL
         Vertices with_out_degree(
             const uint64_t &_count,
             const std::string &_where_edge = "1");
+
+        friend class Edges;
     };
 
     class Edges
@@ -361,6 +367,12 @@ class GQL
         // Select some subset of these edges according to a SQL
         // condition
         Edges where(const std::string &_sql_statement);
+
+        // Select all edges with their source in the given set
+        Edges with_source(const GQL::Vertices &_source);
+
+        // Select all edges with their target in the given set
+        Edges with_target(const GQL::Vertices &_source);
 
         // Select all edges which have the given label
         Edges with_label(const std::string &_label);
@@ -547,57 +559,57 @@ inline GQL::Vertices GQL::Vertices::where(
     const std::string &_sql_statement)
 {
     return GQL::Vertices(
-        owner, std::format("SELECT * FROM ({}) WHERE {}", cmd,
-                           _sql_statement));
+        owner, format_str("SELECT * FROM ({}) WHERE {}", cmd,
+                          _sql_statement));
 }
 
 inline GQL::Vertices GQL::Vertices::with_label(
     const std::string &_label)
 {
     return GQL::Vertices(owner,
-                         std::format("SELECT * FROM ({}) WHERE "
-                                     "label = '{}'",
-                                     cmd, _label));
+                         format_str("SELECT * FROM ({}) WHERE "
+                                    "label = '{}'",
+                                    cmd, _label));
 }
 
 inline GQL::Vertices GQL::Vertices::with_tag(
     const std::string &_key, const std::string &_value)
 {
     return GQL::Vertices(
-        owner, std::format("SELECT * FROM ({}) WHERE "
-                           "json_extract(tags, '$.{}') = '{}'",
-                           cmd, _key, _value));
+        owner, format_str("SELECT * FROM ({}) WHERE "
+                          "json_extract(tags, '$.{}') = '{}'",
+                          cmd, _key, _value));
 }
 
 inline GQL::Vertices GQL::Vertices::with_id(const uint64_t &_id)
 {
     return GQL::Vertices(owner,
-                         std::format("SELECT * FROM ({}) WHERE "
-                                     "id = {}",
-                                     cmd, _id));
+                         format_str("SELECT * FROM ({}) WHERE "
+                                    "id = {}",
+                                    cmd, _id));
 }
 
 inline GQL::Vertices GQL::Vertices::join(
     const GQL::Vertices &_with)
 {
     return GQL::Vertices(
-        owner, std::format("{} UNION {}", cmd, _with.cmd));
+        owner, format_str("{} UNION {}", cmd, _with.cmd));
 }
 
 inline GQL::Vertices GQL::Vertices::intersection(
     const GQL::Vertices &_with)
 {
     return GQL::Vertices(
-        owner, std::format("{} INTERSECT {}", cmd, _with.cmd));
+        owner, format_str("{} INTERSECT {}", cmd, _with.cmd));
 }
 
 inline GQL::Vertices GQL::Vertices::complement(
     const GQL::Vertices &_universe)
 {
     return GQL::Vertices(
-        owner, std::format("SELECT * FROM ({}) WHERE id NOT IN "
-                           "(SELECT id FROM ({}))",
-                           _universe.cmd, cmd));
+        owner, format_str("SELECT * FROM ({}) WHERE id NOT IN "
+                          "(SELECT id FROM ({}))",
+                          _universe.cmd, cmd));
 }
 
 inline GQL::Vertices GQL::Vertices::traverse(
@@ -606,21 +618,21 @@ inline GQL::Vertices GQL::Vertices::traverse(
 {
     return GQL::Vertices(
         owner,
-        std::format("WITH RECURSIVE t AS ("
-                    // Base case
-                    "SELECT id FROM ({}) "
-                    // Recursive call
-                    "UNION "
-                    "SELECT e.target AS id FROM t "
-                    "JOIN (SELECT * FROM edges WHERE {}) e "
-                    "ON t.id = e.source "
-                    "JOIN (SELECT * FROM nodes WHERE {}) n "
-                    "ON e.target = n.id "
-                    "WHERE e.target IS NOT NULL) "
-                    // End recursive call
-                    "SELECT * FROM t JOIN nodes "
-                    "ON t.id = nodes.id",
-                    cmd, _where_edge, _where_node));
+        format_str("WITH RECURSIVE t AS ("
+                   // Base case
+                   "SELECT id FROM ({}) "
+                   // Recursive call
+                   "UNION "
+                   "SELECT e.target AS id FROM t "
+                   "JOIN (SELECT * FROM edges WHERE {}) e "
+                   "ON t.id = e.source "
+                   "JOIN (SELECT * FROM nodes WHERE {}) n "
+                   "ON e.target = n.id "
+                   "WHERE e.target IS NOT NULL) "
+                   // End recursive call
+                   "SELECT * FROM t JOIN nodes "
+                   "ON t.id = nodes.id",
+                   cmd, _where_edge, _where_node));
 }
 
 inline GQL::Vertices GQL::Vertices::r_traverse(
@@ -629,51 +641,51 @@ inline GQL::Vertices GQL::Vertices::r_traverse(
 {
     return GQL::Vertices(
         owner,
-        std::format("WITH RECURSIVE t AS ("
-                    // Base case
-                    "SELECT id FROM ({}) "
-                    // Recursive call
-                    "UNION "
-                    "SELECT e.source AS id "
-                    "FROM t "
-                    "JOIN (SELECT * FROM edges WHERE {}) e "
-                    "ON t.id = e.target "
-                    "JOIN (SELECT * FROM nodes WHERE {}) n "
-                    "ON e.source = n.id "
-                    "WHERE e.source IS NOT NULL) "
-                    // End recursive call
-                    "SELECT * FROM t JOIN nodes "
-                    "ON t.id = nodes.id",
-                    cmd, _where_edge, _where_node));
+        format_str("WITH RECURSIVE t AS ("
+                   // Base case
+                   "SELECT id FROM ({}) "
+                   // Recursive call
+                   "UNION "
+                   "SELECT e.source AS id "
+                   "FROM t "
+                   "JOIN (SELECT * FROM edges WHERE {}) e "
+                   "ON t.id = e.target "
+                   "JOIN (SELECT * FROM nodes WHERE {}) n "
+                   "ON e.source = n.id "
+                   "WHERE e.source IS NOT NULL) "
+                   // End recursive call
+                   "SELECT * FROM t JOIN nodes "
+                   "ON t.id = nodes.id",
+                   cmd, _where_edge, _where_node));
 }
 
 inline GQL::Result GQL::Vertices::label()
 {
     return owner->sql(
-        std::format("SELECT id, label AS label FROM "
-                    "({}) ORDER BY id;",
-                    cmd));
+        format_str("SELECT id, label AS label FROM "
+                   "({}) ORDER BY id;",
+                   cmd));
 }
 
 inline GQL::Result GQL::Vertices::tag(const std::string &_key)
 {
     return owner->sql(
-        std::format("SELECT id, "
-                    "json_extract(tags, '$.{}') AS {} "
-                    "FROM ({}) ORDER BY id;",
-                    _key, _key, cmd));
+        format_str("SELECT id, "
+                   "json_extract(tags, '$.{}') AS {} "
+                   "FROM ({}) ORDER BY id;",
+                   _key, _key, cmd));
 }
 
 inline GQL::Result GQL::Vertices::id()
 {
     return owner->sql(
-        std::format("SELECT id FROM ({}) ORDER BY id;", cmd));
+        format_str("SELECT id FROM ({}) ORDER BY id;", cmd));
 }
 
 inline GQL::Result GQL::Vertices::select(
     const std::string &_what)
 {
-    return owner->sql(std::format(
+    return owner->sql(format_str(
         "SELECT id, {} FROM ({}) ORDER BY id;", _what, cmd));
 }
 
@@ -681,9 +693,9 @@ inline GQL::Vertices GQL::Vertices::label(
     const std::string &_label)
 {
     owner->sql(
-        std::format("UPDATE nodes SET label = '{}' WHERE id IN "
-                    "(SELECT id FROM ({}))",
-                    _label, cmd));
+        format_str("UPDATE nodes SET label = '{}' WHERE id IN "
+                   "(SELECT id FROM ({}))",
+                   _label, cmd));
 
     return *this;
 }
@@ -691,7 +703,7 @@ inline GQL::Vertices GQL::Vertices::label(
 inline GQL::Vertices GQL::Vertices::tag(
     const std::string &_key, const std::string &_value)
 {
-    owner->sql(std::format(
+    owner->sql(format_str(
         "UPDATE nodes SET tags = json_set(tags, '$.{}', '{}') "
         "WHERE id IN (SELECT id FROM ({}))",
         _key, _value, cmd));
@@ -701,9 +713,9 @@ inline GQL::Vertices GQL::Vertices::tag(
 
 inline void GQL::Vertices::erase()
 {
-    owner->sql(std::format("DELETE FROM nodes WHERE id IN "
-                           "(SELECT id FROM ({}));",
-                           cmd));
+    owner->sql(format_str("DELETE FROM nodes WHERE id IN "
+                          "(SELECT id FROM ({}));",
+                          cmd));
 
     // Erase dead edges
     owner->sql("WITH ids AS (SELECT id FROM nodes) "
@@ -715,19 +727,17 @@ inline void GQL::Vertices::erase()
 inline GQL::Edges GQL::Vertices::in()
 {
     return GQL::Edges(
-        owner,
-        std::format("SELECT * FROM edges WHERE target IN "
-                    "(SELECT id FROM ({}))",
-                    cmd));
+        owner, format_str("SELECT * FROM edges WHERE target IN "
+                          "(SELECT id FROM ({}))",
+                          cmd));
 }
 
 inline GQL::Edges GQL::Vertices::out()
 {
     return GQL::Edges(
-        owner,
-        std::format("SELECT * FROM edges WHERE source IN "
-                    "(SELECT id FROM ({}))",
-                    cmd));
+        owner, format_str("SELECT * FROM edges WHERE source IN "
+                          "(SELECT id FROM ({}))",
+                          cmd));
 }
 
 inline GQL::Vertices GQL::Vertices::with_in_degree(
@@ -735,7 +745,7 @@ inline GQL::Vertices GQL::Vertices::with_in_degree(
 {
     return GQL::Vertices(
         owner,
-        std::format(
+        format_str(
             "WITH n AS ({}) "
             "SELECT id, label, tags FROM ("
             "SELECT n.*, COUNT(e.id) AS c "
@@ -751,7 +761,7 @@ inline GQL::Vertices GQL::Vertices::with_out_degree(
 {
     return GQL::Vertices(
         owner,
-        std::format(
+        format_str(
             "WITH n AS ({}) "
             "SELECT id, label, tags FROM ("
             "SELECT n.*, COUNT(e.id) AS c "
@@ -765,17 +775,24 @@ inline GQL::Vertices GQL::Vertices::with_out_degree(
 inline GQL::Edges GQL::Vertices::add_edge(
     const GQL::Vertices &_other)
 {
-    owner->sql("INSERT INTO edges (source, target, tags) "
-               "SELECT l.id, r.id, json('{}') " +
-               std::format("FROM ({}) l CROSS JOIN ({}) r;",
-                           cmd, _other.cmd));
+    // std::cout << "left:  " << owner->sql(cmd) << '\n'
+    //           << "right: " << owner->sql(_other.cmd) << '\n'
+    //           << "cross: " << owner->sql(format_str(
+    //                 "SELECT l.id, r.id, 'fizz' FROM ({}) "
+    //                 "l CROSS JOIN ({}) r;",
+    //                 cmd, _other.cmd)) << '\n';
 
-    return GQL::Edges(
-        owner,
-        std::format("SELECT * FROM edges "
-                    "WHERE source IN (SELECT source FROM ({})) "
-                    "AND target IN (SELECT source FROM ({}))",
-                    cmd, _other.cmd));
+    owner->sql("INSERT INTO edges (source, target) "
+               "SELECT l.id, r.id " +
+               format_str("FROM ({}) l CROSS JOIN ({}) r", cmd,
+                          _other.cmd));
+
+    return GQL::Edges(owner,
+                      format_str("SELECT * FROM edges "
+                                 "WHERE (source, target) IN "
+                                 "(SELECT l.id, r.id FROM "
+                                 "({}) l CROSS JOIN ({}) r)",
+                                 cmd, _other.cmd));
 }
 
 ////////////////////////////////////////////////////////////////
@@ -784,92 +801,109 @@ inline GQL::Edges GQL::Edges::where(
     const std::string &_sql_statement)
 {
     return GQL::Edges(owner,
-                      std::format("SELECT * FROM ({}) WHERE {}",
-                                  cmd, _sql_statement));
+                      format_str("SELECT * FROM ({}) WHERE {}",
+                                 cmd, _sql_statement));
+}
+
+inline GQL::Edges GQL::Edges::with_source(
+    const GQL::Vertices &_source)
+{
+    return GQL::Edges(
+        owner, format_str("SELECT * FROM ({}) WHERE "
+                          "source IN (SELECT id FROM ({}))",
+                          cmd, _source.cmd));
+}
+
+inline GQL::Edges GQL::Edges::with_target(
+    const GQL::Vertices &_source)
+{
+    return GQL::Edges(
+        owner, format_str("SELECT * FROM ({}) WHERE "
+                          "target IN (SELECT id FROM ({}))",
+                          cmd, _source.cmd));
 }
 
 inline GQL::Edges GQL::Edges::with_label(
     const std::string &_label)
 {
     return GQL::Edges(owner,
-                      std::format("SELECT * FROM ({}) WHERE "
-                                  "label = '{}'",
-                                  cmd, _label));
+                      format_str("SELECT * FROM ({}) WHERE "
+                                 "label = '{}'",
+                                 cmd, _label));
 }
 
 inline GQL::Edges GQL::Edges::with_tag(
     const std::string &_key, const std::string &_value)
 {
     return GQL::Edges(
-        owner, std::format("SELECT * FROM ({}) WHERE "
-                           "json_extract(tags, '$.{}') = '{}'",
-                           cmd, _key, _value));
+        owner, format_str("SELECT * FROM ({}) WHERE "
+                          "json_extract(tags, '$.{}') = '{}'",
+                          cmd, _key, _value));
 }
 
 // Get all edges which have the given id
 inline GQL::Edges GQL::Edges::with_id(const uint64_t &_id)
 {
     return GQL::Edges(owner,
-                      std::format("SELECT * FROM ({}) WHERE "
-                                  "id = {}",
-                                  cmd, _id));
+                      format_str("SELECT * FROM ({}) WHERE "
+                                 "id = {}",
+                                 cmd, _id));
 }
 
 inline GQL::Edges GQL::Edges::join(const GQL::Edges &_with)
 {
     return GQL::Edges(
-        owner, std::format("{} UNION {}", cmd, _with.cmd));
+        owner, format_str("{} UNION {}", cmd, _with.cmd));
 }
 
 inline GQL::Edges GQL::Edges::intersection(
     const GQL::Edges &_with)
 {
     return GQL::Edges(
-        owner, std::format("{} INTERSECT {}", cmd, _with.cmd));
+        owner, format_str("{} INTERSECT {}", cmd, _with.cmd));
 }
 
 inline GQL::Edges GQL::Edges::complement(
     const GQL::Edges &_universe)
 {
     return GQL::Edges(
-        owner, std::format("SELECT * FROM ({}) WHERE id NOT IN "
-                           "(SELECT id FROM ({}))",
-                           _universe.cmd, cmd));
+        owner, format_str("SELECT * FROM ({}) WHERE id NOT IN "
+                          "(SELECT id FROM ({}))",
+                          _universe.cmd, cmd));
 }
 
 inline GQL::Result GQL::Edges::label()
 {
-    return owner->sql(std::format(
+    return owner->sql(format_str(
         "SELECT id, label FROM ({}) ORDER BY id;", cmd));
 }
 
 inline GQL::Result GQL::Edges::tag(const std::string &_key)
 {
-    return owner->sql(
-        std::format("SELECT id, "
-                    "json_extract(tags, '$.{}') "
-                    "AS {} FROM ({}) ORDER BY id;",
-                    _key, _key, cmd));
+    return owner->sql(format_str("SELECT id, "
+                                 "json_extract(tags, '$.{}') "
+                                 "AS {} FROM ({}) ORDER BY id;",
+                                 _key, _key, cmd));
 }
 
 inline GQL::Result GQL::Edges::id()
 {
     return owner->sql(
-        std::format("SELECT id FROM ({}) ORDER BY id;", cmd));
+        format_str("SELECT id FROM ({}) ORDER BY id;", cmd));
 }
 
 inline GQL::Result GQL::Edges::select(const std::string &_what)
 {
-    return owner->sql(std::format(
+    return owner->sql(format_str(
         "SELECT id, {} FROM ({}) ORDER BY id;", _what, cmd));
 }
 
 inline GQL::Edges GQL::Edges::label(const std::string &_label)
 {
     owner->sql(
-        std::format("UPDATE edges SET label = '{}' WHERE id IN "
-                    "(SELECT id FROM ({}))",
-                    _label, cmd));
+        format_str("UPDATE edges SET label = '{}' WHERE id IN "
+                   "(SELECT id FROM ({}))",
+                   _label, cmd));
 
     return *this;
 }
@@ -877,7 +911,7 @@ inline GQL::Edges GQL::Edges::label(const std::string &_label)
 inline GQL::Edges GQL::Edges::tag(const std::string &_key,
                                   const std::string &_value)
 {
-    owner->sql(std::format(
+    owner->sql(format_str(
         "UPDATE edges SET tags = json_set(tags, '$.{}', '{}') "
         "WHERE id IN (SELECT id FROM ({}))",
         _key, _value, cmd));
@@ -887,25 +921,25 @@ inline GQL::Edges GQL::Edges::tag(const std::string &_key,
 
 inline void GQL::Edges::erase()
 {
-    owner->sql(std::format("DELETE FROM edges WHERE id IN "
-                           "(SELECT id FROM ({}))",
-                           cmd));
+    owner->sql(format_str("DELETE FROM edges WHERE id IN "
+                          "(SELECT id FROM ({}))",
+                          cmd));
 }
 
 inline GQL::Vertices GQL::Edges::source()
 {
     return GQL::Vertices(
-        owner, std::format("SELECT * FROM nodes WHERE id IN "
-                           "(SELECT source AS id FROM ({}))",
-                           cmd));
+        owner, format_str("SELECT * FROM nodes WHERE id IN "
+                          "(SELECT source AS id FROM ({}))",
+                          cmd));
 }
 
 inline GQL::Vertices GQL::Edges::target()
 {
     return GQL::Vertices(
-        owner, std::format("SELECT * FROM nodes WHERE id IN "
-                           "(SELECT target AS id FROM ({}))",
-                           cmd));
+        owner, format_str("SELECT * FROM nodes WHERE id IN "
+                          "(SELECT target AS id FROM ({}))",
+                          cmd));
 }
 
 ////////////////////////////////////////////////////////////////
@@ -936,23 +970,23 @@ inline GQL::Vertices GQL::add_vertex()
 {
     // Add vertex
     const auto id = next_node_id++;
-    sql(std::format("INSERT INTO nodes (id, tags) VALUES ({}, ",
-                    id) +
+    sql(format_str("INSERT INTO nodes (id, tags) VALUES ({}, ",
+                   id) +
         "json('{}'));");
 
     // Return query
-    return v(std::format("id = {}", id));
+    return v(format_str("id = {}", id));
 }
 
 inline GQL::Vertices GQL::add_vertex(const uint64_t &_id)
 {
     // Add vertex
-    sql(std::format("INSERT INTO nodes (id, tags) VALUES ({}, ",
-                    _id) +
+    sql(format_str("INSERT INTO nodes (id, tags) VALUES ({}, ",
+                   _id) +
         "json('{}'));");
 
     // Return query
-    return v(std::format("id = {}", _id));
+    return v(format_str("id = {}", _id));
 }
 
 inline GQL::Edges GQL::add_edge(const uint64_t &_source,
@@ -960,14 +994,14 @@ inline GQL::Edges GQL::add_edge(const uint64_t &_source,
 {
     // Add edge
     const auto id = next_edge_id++;
-    sql(std::format(
+    sql(format_str(
             "INSERT INTO edges (id, source, target, tags) "
             "VALUES ({}, {}, {}, ",
             id, _source, _target) +
         "json('{}'));");
 
     // Return query
-    return e(std::format("id = {}", id));
+    return e(format_str("id = {}", id));
 }
 
 ////////////////////////////////////////////////////////////////
@@ -977,8 +1011,9 @@ inline GQL::Result GQL::sql(const std::string &_stmt)
     ++sql_call_counter;
 
     char *err_msg = nullptr;
-    auto callback = [](void *out, int n_cols, char **col_vals,
-                       char **col_names) {
+    const static auto callback = [](void *out, int n_cols,
+                                    char **col_vals,
+                                    char **col_names) {
         GQL::Result *q = (GQL::Result *)out;
 
         if (q->headers.empty())
@@ -1028,51 +1063,85 @@ inline GQL::Result GQL::sql(const std::string &_stmt)
 
 inline void GQL::graphviz(const std::string &_filepath)
 {
+    auto sanitize = [](std::string &_w) {
+        for (uint64_t i = 0; i < _w.size(); ++i)
+        {
+            switch (_w[i])
+            {
+            case '"':
+                _w.replace(i, 1, "\\\"");
+            case '\\':
+                ++i;
+            }
+        }
+    };
+
     // Open + header
     std::ofstream f(_filepath);
     if (!f.is_open())
     {
-        throw std::runtime_error(std::format(
+        throw std::runtime_error(format_str(
             "Failed to open output graphviz file '{}'.",
             _filepath));
     }
-    f << "digraph {\n";
+    f << "digraph {\n\tforcelabels=true;\n";
 
     // Nodes
-    auto node_data = v().select("id, label");
+    auto node_data = v().select("id, label, tags");
 
     if (!node_data.body.empty())
     {
         auto id_i = node_data.index_of("id");
         auto label_i = node_data.index_of("label");
+        auto tags_i = node_data.index_of("tags");
 
         for (const auto &node : node_data.body)
         {
             auto id = node[id_i];
             auto label = node[label_i];
+            auto tags = node[tags_i];
+
+            sanitize(label);
+            sanitize(tags);
+
+            if (tags == "{}")
+            {
+                tags = "";
+            }
 
             f << '\t' << id << " [label=\"" << label
-              << "\"];\n";
+              << "\", xlabel=\"" << tags << "\"];\n";
         }
     }
 
     // Edges
-    auto edge_data = e().select("source, target, label");
+    auto edge_data = e().select("source, target, label, tags");
 
     if (!edge_data.body.empty())
     {
         auto source_i = edge_data.index_of("source");
         auto target_i = edge_data.index_of("target");
         auto label_i = edge_data.index_of("label");
+        auto tags_i = edge_data.index_of("tags");
 
         for (const auto &edge : edge_data.body)
         {
             auto source = edge[source_i];
             auto target = edge[target_i];
             auto label = edge[label_i];
+            auto tags = edge[tags_i];
+
+            sanitize(label);
+            sanitize(tags);
+
+            if (tags == "{}")
+            {
+                tags = "";
+            }
 
             f << '\t' << source << " -> " << target
-              << " [label=\"" << label << "\"];\n";
+              << " [label=\"" << label << "\", xlabel=\""
+              << tags << "\"];\n";
         }
     }
 
@@ -1113,3 +1182,6 @@ inline std::ostream &operator<<(std::ostream &_strm,
 }
 
 ////////////////////////////////////////////////////////////////
+#if (__has_include(<format>) && !FORCE_CUSTOM_FORMAT)
+#undef format_str
+#endif
