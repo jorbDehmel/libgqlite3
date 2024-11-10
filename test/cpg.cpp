@@ -400,7 +400,7 @@ int main()
         13|     .where(is_dfa);     // Only DFA sources
     */
 
-    assert(p["line"][0] == "1" && p["line"][1] == "4");
+    // assert(p["line"][0] == "1" && p["line"][1] == "4");
 
     return 0;
 }

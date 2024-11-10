@@ -40,6 +40,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
@@ -52,7 +53,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 // The GQL version. This only ever increases with versions.
 // This can (and should) be used in static assertions to ensure
 // validity.
-#define GQL_VERSION 000000002ULL
+#define GQL_VERSION 000000003ULL
 
 // Uncomment to use custom format over std::format
 // #define FORCE_CUSTOM_FORMAT true
@@ -244,13 +245,20 @@ class GQL
     {
       protected:
         GQL *const owner;
-        const std::string cmd;
+        std::string cmd;
 
       public:
         Vertices(GQL *const _owner, const std::string &_cmd,
                  const uint64_t &_depth = 0)
             : owner(_owner), cmd(_cmd)
         {
+        }
+
+        Vertices &operator=(const Vertices &_other)
+        {
+            assert(owner == _other.owner);
+            cmd = _other.cmd;
+            return *this;
         }
 
         // Select all vertices where the given SQL statement
@@ -348,6 +356,12 @@ class GQL
             const uint64_t &_count,
             const std::string &_where_edge = "1");
 
+        // Gets the in-degrees of the given nodes
+        Result in_degree(const std::string &_where_edge = "1");
+
+        // Gets the out-degrees of the given nodes
+        Result out_degree(const std::string &_where_edge = "1");
+
         friend class Edges;
     };
 
@@ -355,13 +369,20 @@ class GQL
     {
       protected:
         GQL *const owner;
-        const std::string cmd;
+        std::string cmd;
 
       public:
         Edges(GQL *const _owner, const std::string &_cmd,
               const uint64_t &_depth = 0)
             : owner(_owner), cmd(_cmd)
         {
+        }
+
+        Edges &operator=(const Edges &_other)
+        {
+            assert(owner == _other.owner);
+            cmd = _other.cmd;
+            return *this;
         }
 
         // Select some subset of these edges according to a SQL
@@ -772,16 +793,39 @@ inline GQL::Vertices GQL::Vertices::with_out_degree(
             cmd, _where_edge, _count));
 }
 
+// Gets the in-degrees of the given nodes
+inline GQL::Result GQL::Vertices::in_degree(
+    const std::string &_where_edge)
+{
+    return owner->sql(format_str(
+        "WITH n AS ({}) "
+        "SELECT t.id AS id, t.c AS in_degree FROM ("
+        "SELECT n.id AS id, COUNT(e.id) AS c "
+        "FROM n LEFT JOIN (SELECT * FROM edges WHERE {}) e "
+        "ON e.target = n.id "
+        "GROUP BY n.id) t "
+        "ORDER BY id;",
+        cmd, _where_edge));
+}
+
+// Gets the out-degrees of the given nodes
+inline GQL::Result GQL::Vertices::out_degree(
+    const std::string &_where_edge)
+{
+    return owner->sql(format_str(
+        "WITH n AS ({}) "
+        "SELECT t.id AS id, t.c AS out_degree FROM ("
+        "SELECT n.id AS id, COUNT(e.id) AS c "
+        "FROM n LEFT JOIN (SELECT * FROM edges WHERE {}) e "
+        "ON e.source = n.id "
+        "GROUP BY n.id) t "
+        "ORDER BY id;",
+        cmd, _where_edge));
+}
+
 inline GQL::Edges GQL::Vertices::add_edge(
     const GQL::Vertices &_other)
 {
-    // std::cout << "left:  " << owner->sql(cmd) << '\n'
-    //           << "right: " << owner->sql(_other.cmd) << '\n'
-    //           << "cross: " << owner->sql(format_str(
-    //                 "SELECT l.id, r.id, 'fizz' FROM ({}) "
-    //                 "l CROSS JOIN ({}) r;",
-    //                 cmd, _other.cmd)) << '\n';
-
     owner->sql("INSERT INTO edges (source, target) "
                "SELECT l.id, r.id " +
                format_str("FROM ({}) l CROSS JOIN ({}) r", cmd,

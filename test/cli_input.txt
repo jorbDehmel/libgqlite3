@@ -1,0 +1,24 @@
+// This is a comment
+v()
+    .erase();
+
+add_vertex()
+    .label("Alice");
+add_vertex()
+    .label("Bob");
+
+v()
+    .with_label("Alice")
+    .add_edge(
+        v()
+            .with_label("Bob")
+    )
+    .label("is friends with");
+
+v()
+    .label()
+    .as("names");
+
+e()
+    .label()
+    .as("relations");

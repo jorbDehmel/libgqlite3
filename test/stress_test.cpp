@@ -4,17 +4,31 @@ algorithm on a large n. Time AND db space should be taken into
 account.
 */
 
+#include <cassert>
 #include <format>
 #include <gql.hpp>
 #include <iostream>
 
-#define START 2
-#define END 100'000ULL
+#define START 1
+#define END 10'000ULL
+
+constexpr inline const uint64_t n_divisors(const uint64_t what)
+{
+    uint64_t out = 0;
+    for (uint64_t i = 1; i * i <= what; ++i)
+    {
+        if (what % i == 0)
+        {
+            ++out;
+        }
+    }
+    return out;
+}
 
 int main()
 {
-    uint64_t start, stop;
-    uint64_t elapsed_s;
+    uint64_t start, stop, stop2;
+    uint64_t elapsed_s, verification_elapsed_s;
 
     GQL g("/tmp/gql_stress_test.db", true);
 
@@ -39,35 +53,37 @@ int main()
         // Add divisibility edges
         g.v()
             .where(std::format("id * id <= {}", cur))
-            .where(std::format("MOD({}, id) = 0", cur, cur))
+            .where(std::format("MOD({}, id) = 0", cur))
             .add_edge(g.v().where(std::format("id = {}", cur)));
     }
-
-    // Erase self-loops
-    g.e().where("source = target").erase();
-
-    // Mark primes
-    g.v().with_in_degree(0).tag("prime", "true");
 
     // Stop timer
     stop = time(NULL);
     elapsed_s = stop - start;
 
-    // Print primes
-    auto primes = g.v().with_tag("prime", "true").id()["id"];
-    for (const auto &p : primes)
+    // Print number of divisors for each node
+    const GQL::Result res = g.v().in_degree();
+    for (const auto &p : res)
     {
-        std::cout << p << ' ';
+        // Assert correctness
+        const auto obs = std::stoull(p[1]);
+        const auto exp = n_divisors(std::stoi(p[0]));
+        assert(obs == exp);
     }
 
+    stop2 = time(NULL);
+    verification_elapsed_s = stop2 - stop;
+
     // Print stats
-    std::cout << "\nChecked " << END - START << " numbers for "
-              << "primality, leading to " << g.sql_call_counter
-              << " DB calls in " << elapsed_s << " s. Final "
+    std::cout << "\nFound the factor counts of " << END - START
+              << " numbers, leading to " << g.sql_call_counter
+              << " DB calls in " << elapsed_s << " s (versus "
+              << verification_elapsed_s
+              << " s verification time). Final "
               << "node count: " << g.v().id().size() << " final"
               << " edge count: " << g.e().id().size() << '\n'
               << "Found "
-              << g.v().with_tag("prime", "true").id().size()
+              << g.v().with_in_degree(1).id().size()
               << " primes.\nAverage ms / DB call: "
               << 1'000.0 * (double)elapsed_s /
                      (double)g.sql_call_counter
