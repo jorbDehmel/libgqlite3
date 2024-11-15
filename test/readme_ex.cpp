@@ -1,6 +1,6 @@
 // main.cpp
 
-#include <gql.hpp>
+#include "../src/gql.hpp"
 #include <iostream>
 
 int main()

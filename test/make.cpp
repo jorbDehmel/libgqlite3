@@ -2,7 +2,8 @@
 Maintains a GQL db which is similar to a makefile.
 */
 
-#include <gql.hpp>
+#include "../src/gql.hpp"
+
 #include <initializer_list>
 #include <iostream>
 #include <list>

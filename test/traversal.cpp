@@ -2,8 +2,9 @@
 Basic recursive traversal tests for GQL
 */
 
+#include "../src/gql.hpp"
+
 #include <cassert>
-#include <gql.hpp>
 #include <initializer_list>
 #include <iostream>
 #include <stdexcept>

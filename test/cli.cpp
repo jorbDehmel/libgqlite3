@@ -5,11 +5,12 @@ This software is licensed as part of GQL.
 Jordan Dehmel, '24
 */
 
+#include "../src/gql.hpp"
+
 #include <cassert>
 #include <cstring>
 #include <fstream>
 #include <functional>
-#include <gql.hpp>
 #include <iterator>
 #include <map>
 #include <optional>

@@ -3,9 +3,10 @@ CPG = AST + CFG + PDG
 From another project I'm working on that could use a better GDBM
 */
 
+#include "../src/gql.hpp"
+
 #include <cassert>
 #include <format>
-#include <gql.hpp>
 #include <iostream>
 #include <string>
 

@@ -4,9 +4,9 @@ algorithm on a large n. Time AND db space should be taken into
 account.
 */
 
+#include "../src/gql.hpp"
 #include <cassert>
 #include <format>
-#include <gql.hpp>
 #include <iostream>
 
 #define START 1
