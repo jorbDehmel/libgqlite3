@@ -43,8 +43,11 @@ OTHER DEALINGS IN THE SOFTWARE.
 #include <cassert>
 #include <cstdint>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <iterator>
+#include <list>
+#include <map>
 #include <sqlite3.h>
 #include <stdexcept>
 #include <string>
@@ -53,10 +56,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 // The GQL version. This only ever increases with versions.
 // This can (and should) be used in static assertions to ensure
 // validity.
-#define GQL_VERSION 000000003ULL
-
-// Uncomment to use custom format over std::format
-// #define FORCE_CUSTOM_FORMAT true
+#define GQL_VERSION 000000004ULL
 
 // Assert compiler version
 static_assert(__cplusplus > 201100L, "Invalid C++ std.");
@@ -174,6 +174,40 @@ class GQL
         std::vector<std::vector<std::string>> body;
         std::vector<std::string> headers;
 
+        // Merge rows. Every row in this must have some row in
+        // the other for which the ids match.
+        inline void merge_rows(const Result &_other)
+        {
+            const auto other_indices = _other["id"];
+            std::map<int, int> to_other;
+            for (uint i = 0; i < size(); ++i)
+            {
+                to_other[i] = std::distance(
+                    other_indices.begin(),
+                    std::find(other_indices.begin(),
+                              other_indices.end(),
+                              operator[]("id")[i]));
+            }
+
+            // For each column in other which is not in this
+            for (const auto &col : _other.headers)
+            {
+                if (std::find(headers.begin(), headers.end(),
+                              col) != headers.end())
+                {
+                    continue;
+                }
+
+                // Append header
+                const auto col_vals = _other[col];
+                headers.push_back(col);
+                for (uint i = 0; i < size(); ++i)
+                {
+                    body[i].push_back(col_vals.at(to_other[i]));
+                }
+            }
+        }
+
         // Get row
         inline const std::vector<std::string> &operator[](
             const size_t &_i) const
@@ -189,7 +223,7 @@ class GQL
             out.reserve(size());
             const auto ind = index_of(_col);
 
-            for (int i = 0; i < size(); ++i)
+            for (uint i = 0; i < size(); ++i)
             {
                 out.push_back(operator[](i)[ind]);
             }
@@ -248,8 +282,7 @@ class GQL
         std::string cmd;
 
       public:
-        Vertices(GQL *const _owner, const std::string &_cmd,
-                 const uint64_t &_depth = 0)
+        Vertices(GQL *const _owner, const std::string &_cmd)
             : owner(_owner), cmd(_cmd)
         {
         }
@@ -264,6 +297,9 @@ class GQL
         // Select all vertices where the given SQL statement
         // holds
         Vertices where(const std::string &_sql_statement);
+
+        // Limit to some number
+        Vertices limit(const uint64_t &_n);
 
         // Select all vertices with the given label
         Vertices with_label(const std::string &_label);
@@ -287,6 +323,10 @@ class GQL
         // Select all vertices which are in the universe set but
         // not this set
         Vertices complement(const Vertices &_universe);
+
+        // Select all vertices which are in this set but not the
+        // subgroup
+        Vertices excluding(const Vertices &_subgroup);
 
         // Select all nodes reachable from this node set
         // according to a few recursive rules. This follows
@@ -315,6 +355,7 @@ class GQL
         // Select the value associated with the given key for
         // all vertices in this set
         Result tag(const std::string &_key);
+        Result tag(const std::list<std::string> &_keys);
 
         // Select the id of all vertices in this set
         Result id();
@@ -335,6 +376,16 @@ class GQL
         // erase any and all edges which reference the deleted
         // nodes as either source or target.
         void erase();
+
+        // Run some function given this set, then continue on.
+        // For instance,
+        // ```cpp
+        // a.lemma([](auto self){
+        //    self.tag("foo", "fizz"); }
+        // ).erase();
+        // ```
+        // would execute a tag, then erase on the same node.
+        Vertices lemma(const std::function<void(Vertices)> _fn);
 
         // Add edges from each node in this set to each node
         // in the passed set (cartesian product).
@@ -372,8 +423,7 @@ class GQL
         std::string cmd;
 
       public:
-        Edges(GQL *const _owner, const std::string &_cmd,
-              const uint64_t &_depth = 0)
+        Edges(GQL *const _owner, const std::string &_cmd)
             : owner(_owner), cmd(_cmd)
         {
         }
@@ -388,6 +438,9 @@ class GQL
         // Select some subset of these edges according to a SQL
         // condition
         Edges where(const std::string &_sql_statement);
+
+        // Limit to some number
+        Edges limit(const uint64_t &_n);
 
         // Select all edges with their source in the given set
         Edges with_source(const GQL::Vertices &_source);
@@ -417,11 +470,16 @@ class GQL
         // in this set
         Edges complement(const Edges &_universe);
 
+        // Return all values which are in this set but not in
+        // the subgroup
+        Edges excluding(const Edges &_subgroup);
+
         // Get the label of all edges in this set
         Result label();
 
         // Get the values associated with the given key
         Result tag(const std::string &_key);
+        Result tag(const std::list<std::string> &_keys);
 
         // Yield the ids of the edges in this set
         Result id();
@@ -437,6 +495,16 @@ class GQL
         // Add a key-value pair to each of these edges.
         Edges tag(const std::string &_key,
                   const std::string &_value);
+
+        // Run some function given this set, then continue on.
+        // For instance,
+        // ```cpp
+        // a.lemma([](auto self){
+        //    self.tag("foo", "fizz"); }
+        // ).erase();
+        // ```
+        // would execute a tag, then erase on the same node.
+        Edges lemma(const std::function<void(Edges)> _fn);
 
         // Erase these edges from the database.
         void erase();
@@ -584,6 +652,13 @@ inline GQL::Vertices GQL::Vertices::where(
                           _sql_statement));
 }
 
+inline GQL::Vertices GQL::Vertices::limit(const uint64_t &_n)
+{
+    return GQL::Vertices(
+        owner,
+        format_str("SELECT * FROM ({}) LIMIT {}", cmd, _n));
+}
+
 inline GQL::Vertices GQL::Vertices::with_label(
     const std::string &_label)
 {
@@ -631,6 +706,17 @@ inline GQL::Vertices GQL::Vertices::complement(
         owner, format_str("SELECT * FROM ({}) WHERE id NOT IN "
                           "(SELECT id FROM ({}))",
                           _universe.cmd, cmd));
+}
+
+// Select all vertices which are in this set but not the
+// subgroup
+inline GQL::Vertices GQL::Vertices::excluding(
+    const GQL::Vertices &_subgroup)
+{
+    return GQL::Vertices(
+        owner, format_str("SELECT * FROM ({}) WHERE id NOT IN "
+                          "(SELECT id FROM ({}))",
+                          cmd, _subgroup.cmd));
 }
 
 inline GQL::Vertices GQL::Vertices::traverse(
@@ -697,6 +783,32 @@ inline GQL::Result GQL::Vertices::tag(const std::string &_key)
                    _key, _key, cmd));
 }
 
+inline GQL::Result GQL::Vertices::tag(
+    const std::list<std::string> &_keys)
+{
+    std::string subcommand = "";
+    for (const auto &key : _keys)
+    {
+        if (!subcommand.empty())
+        {
+            subcommand += ", ";
+        }
+
+        if (key == "id" || key == "tags" || key == "label")
+        {
+            subcommand += key;
+        }
+        else
+        {
+            subcommand += format_str(
+                "json_extract(tags, '$.{}') AS {}", key, key);
+        }
+    }
+
+    return owner->sql(format_str(
+        "SELECT {} FROM ({}) ORDER BY id;", subcommand, cmd));
+}
+
 inline GQL::Result GQL::Vertices::id()
 {
     return owner->sql(
@@ -729,6 +841,13 @@ inline GQL::Vertices GQL::Vertices::tag(
         "WHERE id IN (SELECT id FROM ({}))",
         _key, _value, cmd));
 
+    return *this;
+}
+
+inline GQL::Vertices GQL::Vertices::lemma(
+    const std::function<void(GQL::Vertices)> _fn)
+{
+    _fn(*this);
     return *this;
 }
 
@@ -849,6 +968,13 @@ inline GQL::Edges GQL::Edges::where(
                                  cmd, _sql_statement));
 }
 
+inline GQL::Edges GQL::Edges::limit(const uint64_t &_n)
+{
+    return GQL::Edges(
+        owner,
+        format_str("SELECT * FROM ({}) LIMIT {}", cmd, _n));
+}
+
 inline GQL::Edges GQL::Edges::with_source(
     const GQL::Vertices &_source)
 {
@@ -916,6 +1042,17 @@ inline GQL::Edges GQL::Edges::complement(
                           _universe.cmd, cmd));
 }
 
+// Select all vertices which are in this set but not the
+// subgroup
+inline GQL::Edges GQL::Edges::excluding(
+    const GQL::Edges &_subgroup)
+{
+    return GQL::Edges(
+        owner, format_str("SELECT * FROM ({}) WHERE id NOT IN "
+                          "(SELECT id FROM ({}))",
+                          cmd, _subgroup.cmd));
+}
+
 inline GQL::Result GQL::Edges::label()
 {
     return owner->sql(format_str(
@@ -928,6 +1065,33 @@ inline GQL::Result GQL::Edges::tag(const std::string &_key)
                                  "json_extract(tags, '$.{}') "
                                  "AS {} FROM ({}) ORDER BY id;",
                                  _key, _key, cmd));
+}
+
+inline GQL::Result GQL::Edges::tag(
+    const std::list<std::string> &_keys)
+{
+    std::string subcommand = "";
+    for (const auto &key : _keys)
+    {
+        if (!subcommand.empty())
+        {
+            subcommand += ", ";
+        }
+
+        if (key == "id" || key == "tags" || key == "label" ||
+            key == "source" || key == "target")
+        {
+            subcommand += key;
+        }
+        else
+        {
+            subcommand += format_str(
+                "json_extract(tags, '$.{}') AS {}", key, key);
+        }
+    }
+
+    return owner->sql(format_str(
+        "SELECT {} FROM ({}) ORDER BY id;", subcommand, cmd));
 }
 
 inline GQL::Result GQL::Edges::id()
@@ -960,6 +1124,13 @@ inline GQL::Edges GQL::Edges::tag(const std::string &_key,
         "WHERE id IN (SELECT id FROM ({}))",
         _key, _value, cmd));
 
+    return *this;
+}
+
+inline GQL::Edges GQL::Edges::lemma(
+    const std::function<void(GQL::Edges)> _fn)
+{
+    _fn(*this);
     return *this;
 }
 

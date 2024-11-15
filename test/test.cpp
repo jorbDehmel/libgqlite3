@@ -2,12 +2,10 @@
 Unit tests for GQL
 */
 
-#if !(__has_include(<gql.hpp>))
-#error "Cannot test before installation"
-#endif
+#include "../src/gql.hpp"
 
+#include <string>
 #include <cassert>
-#include <gql.hpp>
 #include <sys/types.h>
 
 // If the two vectors do not match, cause a kernel panic
@@ -45,6 +43,206 @@ inline void assert_eq(const std::vector<std::string> &_l,
     }
 
     assert(flag);
+}
+
+void test_merge_rows()
+{
+    GQL::Result a, b;
+    a.headers = {"id", "fizz"};
+    a.body = {
+        {"1", "fizz1"}, {"23", "fizz23"}, {"98", "fizz98"}};
+
+    b.headers = {"buzz", "id"};
+    b.body = {{"buzz98", "98"},
+              {"buzz1", "1"},
+              {"buzz40", "40"},
+              {"buzz23", "23"}};
+
+    a.merge_rows(b);
+
+    assert_eq(a.headers, {"id", "fizz", "buzz"});
+    assert(a.size() == 3);
+    assert_eq(a.body[0], {"1", "fizz1", "buzz1"});
+    assert_eq(a.body[1], {"23", "fizz23", "buzz23"});
+    assert_eq(a.body[2], {"98", "fizz98", "buzz98"});
+
+    bool flag = false;
+    try
+    {
+        b.merge_rows(a);
+    }
+    catch (...)
+    {
+        flag = true;
+    }
+    assert(flag);
+}
+
+void test_limit()
+{
+    GQL g("foo.db", true);
+
+    g.add_vertex(3);
+    g.add_vertex(2);
+    g.add_vertex(1);
+
+    auto r = g.v().limit(1).id();
+    assert(r.size() == 1);
+    assert(r["id"][0] == "1");
+}
+
+void test_set_operations()
+{
+    // Tests intersection, join, complement, and exclusion.
+    GQL g("foo.db", true);
+
+    for (int i = 1; i <= 5; ++i)
+    {
+        g.add_vertex(i);
+        g.add_edge(i, i);
+    }
+
+    // Basic sets
+    auto a = g.v().where("id <= 3");
+    auto b = g.v().where("id >= 3");
+    auto universe = g.v();
+
+    auto a_edges = a.out();
+    auto b_edges = b.out();
+    auto universe_edges = g.e();
+
+    // Vertices
+    {
+        // Experimental sets
+        auto u = a.join(b);
+        auto i = a.intersection(b);
+        auto a_minus_b = a.excluding(b);
+        auto b_minus_a = b.excluding(a);
+        auto a_complement = a.complement(universe);
+        auto b_complement = b.complement(universe);
+
+        assert(u.id().size() == 5);
+        assert(i.id().size() == 1);
+        assert(i.id()["id"][0] == "3");
+        assert(a_minus_b.id().size() == 2);
+        assert(a_minus_b.id()["id"][0] == "1");
+        assert(a_minus_b.id()["id"][1] == "2");
+        assert(b_minus_a.id().size() == 2);
+        assert(b_minus_a.id()["id"][0] == "4");
+        assert(b_minus_a.id()["id"][1] == "5");
+        assert(a_complement.id().size() == 2);
+        assert(a_complement.id()["id"][0] == "4");
+        assert(a_complement.id()["id"][1] == "5");
+        assert(b_complement.id().size() == 2);
+        assert(b_complement.id()["id"][0] == "1");
+        assert(b_complement.id()["id"][1] == "2");
+    }
+
+    // Edges
+    {
+        // Experimental sets
+        auto u = a_edges.join(b_edges).target();
+        auto i = a_edges.intersection(b_edges).target();
+        auto a_minus_b = a_edges.excluding(b_edges).target();
+        auto b_minus_a = b_edges.excluding(a_edges).target();
+        auto a_complement =
+            a_edges.complement(universe_edges).target();
+        auto b_complement =
+            b_edges.complement(universe_edges).target();
+
+        assert(u.id().size() == 5);
+        assert(i.id().size() == 1);
+        assert(i.id()["id"][0] == "3");
+        assert(a_minus_b.id().size() == 2);
+        assert(a_minus_b.id()["id"][0] == "1");
+        assert(a_minus_b.id()["id"][1] == "2");
+        assert(b_minus_a.id().size() == 2);
+        assert(b_minus_a.id()["id"][0] == "4");
+        assert(b_minus_a.id()["id"][1] == "5");
+        assert(a_complement.id().size() == 2);
+        assert(a_complement.id()["id"][0] == "4");
+        assert(a_complement.id()["id"][1] == "5");
+        assert(b_complement.id().size() == 2);
+        assert(b_complement.id()["id"][0] == "1");
+        assert(b_complement.id()["id"][1] == "2");
+    }
+}
+
+void test_lemma()
+{
+    GQL g("foo.db", true);
+    double sum, prod, sum_squared;
+
+    // Setup
+    for (int i = 1; i <= 5; ++i)
+    {
+        g.add_vertex(i).label(std::to_string(i));
+    }
+
+    for (int i = 1; i <= 5; ++i)
+    {
+        for (int j = 1; j <= 5; ++j)
+        {
+            g.v()
+                .with_id(i)
+                .add_edge(g.v().with_id(j))
+                .label(std::to_string(i * j));
+        }
+    }
+
+    // Testing
+    g.v()
+        .lemma([&](auto v) {
+            sum = 0.0;
+            for (const auto &l : v.label()["label"])
+            {
+                sum += std::stod(l);
+            }
+        })
+        .lemma([&](auto v) {
+            prod = 1.0;
+            for (const auto &l : v.label()["label"])
+            {
+                prod *= std::stod(l);
+            }
+        })
+        .lemma([&](auto v) {
+            sum_squared = 0.0;
+            for (const auto &l : v.label()["label"])
+            {
+                double val = std::stod(l);
+                sum_squared += val * val;
+            }
+        });
+
+    assert(sum == (1 + 2 + 3 + 4 + 5));
+    assert(sum_squared == (1 + 4 + 9 + 16 + 25));
+    assert(prod == (1 * 2 * 3 * 4 * 5));
+
+    g.e().lemma([&](auto e) {
+        sum = 0.0;
+        for (const auto &l : e.label()["label"])
+        {
+            sum += std::stod(l);
+        }
+    });
+
+    assert(sum == (1 + 2 + 3 + 4 + 5 + 2 + 4 + 6 + 8 + 10 + 3 +
+                   6 + 9 + 12 + 15 + 4 + 8 + 12 + 16 + 20 + 5 +
+                   10 + 15 + 20 + 25));
+}
+
+void test_multiple_tag_getter()
+{
+    GQL g("foo.db", true);
+    g.add_vertex(1).tag("a", "1").tag("b", "2").tag("c", "3");
+
+    auto r = g.v().with_id(1).tag({"a", "b", "c"});
+
+    assert(r.size() == 1);
+    assert(r["a"][0] == "1");
+    assert(r["b"][0] == "2");
+    assert(r["c"][0] == "3");
 }
 
 void test_open()
@@ -158,7 +356,7 @@ void test_vertex_queries()
     assert_eq(g.v().with_tag("is_first", "true").id()["id"],
               {"1"});
 
-    // Join, intersection, complement
+    // Join, intersection, complement, excluding
     assert_eq(g.v().id()["id"],
               g.v()
                   .with_tag("is_first", "true")
@@ -343,12 +541,17 @@ int main()
     std::cout << "Running GQL unit tests...\n";
 
     // Run tests
+    test_merge_rows();
     test_open();
     test_creation();
     test_manager_queries();
     test_vertex_queries();
     test_edge_queries();
     test_traversals();
+    test_limit();
+    test_set_operations();
+    test_lemma();
+    test_multiple_tag_getter();
 
     // Clean up
     system("rm -f ./foo.*");

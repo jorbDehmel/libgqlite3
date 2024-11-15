@@ -82,8 +82,7 @@ int main()
               << " s verification time). Final "
               << "node count: " << g.v().id().size() << " final"
               << " edge count: " << g.e().id().size() << '\n'
-              << "Found "
-              << g.v().with_in_degree(1).id().size()
+              << "Found " << g.v().with_in_degree(1).id().size()
               << " primes.\nAverage ms / DB call: "
               << 1'000.0 * (double)elapsed_s /
                      (double)g.sql_call_counter
