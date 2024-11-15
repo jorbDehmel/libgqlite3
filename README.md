@@ -1,4 +1,6 @@
 
+![Test Badge](https://github.com/jorbDehmel/gql/actions/workflows/ci-test.yml/badge.svg)
+
 # GQL (Graph SQLite3)
 Jordan Dehmel, 2024
 

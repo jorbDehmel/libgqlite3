@@ -4,8 +4,8 @@ Unit tests for GQL
 
 #include "../src/gql.hpp"
 
-#include <string>
 #include <cassert>
+#include <string>
 #include <sys/types.h>
 
 // If the two vectors do not match, cause a kernel panic

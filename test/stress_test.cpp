@@ -52,9 +52,10 @@ int main()
 
         // Add divisibility edges
         g.v()
-            .where(std::format("id * id <= {}", cur))
-            .where(std::format("MOD({}, id) = 0", cur))
-            .add_edge(g.v().where(std::format("id = {}", cur)));
+            .where("id * id <= " + std::to_string(cur))
+            .where("MOD(" + std::to_string(cur) + ", id) = 0")
+            .add_edge(
+                g.v().where("id = " + std::to_string(cur)));
     }
 
     // Stop timer

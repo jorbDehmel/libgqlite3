@@ -15,9 +15,9 @@ const static std::string stmt_v = "STATEMENT",
                          data_v = "DATA", ast_e = "AST",
                          eps_e = "EPSILON", t_e = "TRUE",
                          f_e = "FALSE", d_e = "DATA",
-                         is_cfg = std::format(
-                             "label = '{}' OR label = '{}'",
-                             pred_v, stmt_v);
+                         is_cfg = "label = '" + pred_v +
+                                  "' OR label = '" + stmt_v +
+                                  "'";
 
 int main()
 {
