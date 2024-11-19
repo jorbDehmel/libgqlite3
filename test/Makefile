@@ -3,7 +3,7 @@ TESTS := test.out readme_ex.out traversal.out make.out \
 FORMAT_TESTS := $(TESTS:%.out=%.format.out)
 
 CC := g++ -std=c++20
-LFLAGS := -pedantic -Wall -g -O3
+LFLAGS := -pedantic -Wall -g -O3 -D SQLITE_MAX_EXPR_DEPTH=0
 CFLAGS := $(LFLAGS)
 LIBS := -lsqlite3
 
