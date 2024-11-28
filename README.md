@@ -8,8 +8,7 @@ Jordan Dehmel, 2024
 
 A simple Graph DataBase Manager (GDBM) library for `C++` using
 `libsqlite3`. Loosely based on `Gremlin`, but aiming to spin up
-faster. No CLI is provided here (only `C++` lib), but one would
-be semitrivial to implement.
+faster.
 
 A GQL object instance represents exactly one database file and
 exactly one property graph. The property graph $G$ managed is
@@ -47,7 +46,8 @@ this software is likely to run slower and be more bug-prone.
 ### Use Case 2: `#include "./gql.hpp"` (casual local install)
 3) Simply copy-paste the local file `./src/gql.hpp` anywhere you
     want to use it. This is allowed by the licensing without
-    acknowledgment
+    acknowledgment, and the entirety of the MIT license is
+    included in the header file.
 
 ## Example
 
@@ -137,7 +137,7 @@ GQL g("foo.db", true);  // Open and erase
 g.add_vertex();         // Add a vertex with an unspecified ID
 g.add_vertex(100);      // Add a vertex with the ID 100
 
-auto node = g.add_vertex(); // Add a vertex and retrive it
+auto node = g.add_vertex(); // Add a vertex and retrieve it
 
 g.add_vertex().label("label");  // Create a node and label it
 
