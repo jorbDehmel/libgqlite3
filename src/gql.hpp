@@ -56,7 +56,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 // The GQL version. This only ever increases with versions.
 // This can (and should) be used in static assertions to ensure
 // validity.
-#define GQL_VERSION 000000004ULL
+#define GQL_VERSION 000000005ULL
 
 // Assert compiler version
 static_assert(__cplusplus > 201100L, "Invalid C++ std.");
@@ -151,6 +151,15 @@ std::string format_str(const std::string &_format,
     return out;
 }
 
+#endif
+
+// After this many characters, the query "bounces". This
+// ensures that SQLite will not experience parser overflows.
+// "Bouncing" replaces the existing query with its ids, leading
+// to a less complicated (although not necessarily shorter)
+// query.
+#ifndef GQL_BOUNCE_THRESH
+#define GQL_BOUNCE_THRESH 128
 #endif
 
 /*
@@ -282,10 +291,8 @@ class GQL
         std::string cmd;
 
       public:
-        Vertices(GQL *const _owner, const std::string &_cmd)
-            : owner(_owner), cmd(_cmd)
-        {
-        }
+        // Bounces may happen herein
+        Vertices(GQL *const _owner, const std::string &_cmd);
 
         Vertices &operator=(const Vertices &_other)
         {
@@ -423,10 +430,8 @@ class GQL
         std::string cmd;
 
       public:
-        Edges(GQL *const _owner, const std::string &_cmd)
-            : owner(_owner), cmd(_cmd)
-        {
-        }
+        // Bounces may occur herein
+        Edges(GQL *const _owner, const std::string &_cmd);
 
         Edges &operator=(const Edges &_other)
         {
@@ -643,6 +648,31 @@ inline void GQL::rollback()
 }
 
 ////////////////////////////////////////////////////////////////
+
+inline GQL::Vertices::Vertices(GQL *const _owner,
+                               const std::string &_cmd)
+    : owner(_owner), cmd(_cmd)
+{
+    if (_cmd.size() > GQL_BOUNCE_THRESH)
+    {
+        // Perform query simplification "bounce"
+        auto ids = this->id();
+
+        std::string bounced_cmd =
+            "SELECT * FROM nodes WHERE id IN (";
+        if (ids.empty())
+        {
+            bounced_cmd += ')';
+        }
+        for (const auto &id : ids)
+        {
+            bounced_cmd += id[0] + ",";
+        }
+        bounced_cmd.back() = ')';
+
+        cmd = bounced_cmd;
+    }
+}
 
 inline GQL::Vertices GQL::Vertices::where(
     const std::string &_sql_statement)
@@ -959,6 +989,31 @@ inline GQL::Edges GQL::Vertices::add_edge(
 }
 
 ////////////////////////////////////////////////////////////////
+
+inline GQL::Edges::Edges(GQL *const _owner,
+                         const std::string &_cmd)
+    : owner(_owner), cmd(_cmd)
+{
+    if (_cmd.size() > GQL_BOUNCE_THRESH)
+    {
+        // Perform query simplification "bounce"
+        auto ids = this->id();
+
+        std::string bounced_cmd =
+            "SELECT * FROM edges WHERE id IN (";
+        if (ids.empty())
+        {
+            bounced_cmd += ')';
+        }
+        for (const auto &id : ids)
+        {
+            bounced_cmd += id[0] + ",";
+        }
+        bounced_cmd.back() = ')';
+
+        cmd = bounced_cmd;
+    }
+}
 
 inline GQL::Edges GQL::Edges::where(
     const std::string &_sql_statement)
