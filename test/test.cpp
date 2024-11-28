@@ -534,6 +534,29 @@ void test_traversals()
               {"4", "5"});
 }
 
+void test_bounce()
+{
+    GQL g("foo.db", true);
+    uint64_t max = 10000;
+
+    g.add_vertex(1);
+    for (uint64_t i = 1; i < max; ++i)
+    {
+        g.v()
+            .with_id(i)
+            .add_edge(g.add_vertex(i + 1))
+            .label("next");
+    }
+
+    // Create and evaluate a copiously long query
+    GQL::Vertices query = g.v().with_id(1);
+    for (uint64_t i = 1; i < max; ++i)
+    {
+        query = query.out().with_label("next").target();
+    }
+    assert(std::stoull(query.id()["id"][0]) == max);
+}
+
 ////////////////////////////////////////////////////////////////
 
 int main()
@@ -552,6 +575,7 @@ int main()
     test_set_operations();
     test_lemma();
     test_multiple_tag_getter();
+    test_bounce();
 
     // Clean up
     system("rm -f ./foo.*");
