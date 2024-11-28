@@ -1,6 +1,5 @@
 CompileFlags:
   Add:
     - "-std=c++20"
-    - "-I../node_modules/node-addon-api"
     - "-I/usr/include"
     - "-ferror-limit=999"
