@@ -223,32 +223,6 @@ int main()
 
     g.graphviz("foo.dot");
 
-    /*
-    Definitions:
-    \[
-    \begin{aligned}
-        \texttt{PARENTS}, \texttt{CHILDREN}, \texttt{ANCESTORS},
-            \texttt{DESCENDENTS}, \texttt{COMPONENT}
-            : V -> 2^V \\
-        E := V \times V \\
-        \texttt{PARENTS}(v) =
-            \{ u : (u, v) \in E \land
-            \sigma((u, v)) = \texttt{DATA} \} \\
-        \texttt{CHILDREN}(u) =
-            \{ v : (u, v) \in E \land
-            \sigma((u, v)) = \texttt{DATA} \} \\
-        \texttt{ANCESTORS}(u) =
-            \texttt{PARENTS}(u) \cup \{ \texttt{ANCESTORS}(v)
-            : v \in \texttt{PARENTS}(u) \} \\
-        \texttt{DESCENDENTS}(u) =
-            \texttt{CHILDREN}(u) \cup \{ \texttt{DESCENDENTS}(v)
-            : v \in \texttt{CHILDREN}(u) \} \\
-        \texttt{COMPONENT}(u) = \texttt{ANCESTORS}(u) \cup
-            \texttt{DESCENDENTS}(u) \\
-    \end{aligned}
-    \]
-    */
-
     // Query definitions
     auto parents = [](GQL::Vertices _what) {
         return _what            // The nodes we were givin
@@ -264,52 +238,6 @@ int main()
             .with_label(d_e)    // Only PDA edges still
             .source()           // Source of this final edge
             .where(is_cfg);     // Only DFA sources
-    };
-    auto children = [](GQL::Vertices _what) {
-        return _what            // The nodes we were givin
-            .where(is_cfg)      // Use only DFA nodes
-            .out()              // Edges leading out
-            .with_label(d_e)    // Only PDA edges
-            .target()           // PDA nodes modified by src
-            .out()              // Edges leading out of
-            .with_label(d_e)    // Only PDA edges
-            .target()           // Targets of these edges
-            .with_label(data_v) // Only data sources
-            .in()               // Edges leading into source
-            .with_label(d_e)    // Only PDA edges still
-            .source()           // Source of this final edge
-            .where(is_cfg);     // Only DFA sources
-    };
-
-    auto ancestors = [](GQL::Vertices _what) {
-        // Enter PDG
-        auto vars =
-            _what.where(is_cfg).out().with_label(d_e).target();
-
-        // Traverse
-        auto travs = vars.r_traverse("label = " + data_v,
-                                     "label = " + d_e);
-
-        // Exit to CFG
-        return travs.in().with_label(d_e).source().where(
-            is_cfg);
-    };
-    auto descendents = [](GQL::Vertices _what) {
-        // Enter PDG
-        auto vars =
-            _what.where(is_cfg).out().with_label(d_e).target();
-
-        // Traverse
-        auto travs = vars.traverse("label = " + data_v,
-                                   "label = " + d_e);
-
-        // Exit to CFG
-        return travs.in().with_label(d_e).source().where(
-            is_cfg);
-    };
-
-    auto component = [&](GQL::Vertices &_what) {
-        return ancestors(_what).join(descendents(_what));
     };
 
     /*
