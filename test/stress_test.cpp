@@ -6,7 +6,6 @@ account.
 
 #include "../src/gql.hpp"
 #include <cassert>
-#include <format>
 #include <iostream>
 
 #define START 1

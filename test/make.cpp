@@ -48,12 +48,9 @@ class Maker
 
         while (!g.v().with_label(_target).id().empty())
         {
-            // Get all nodes in the component whose in-degrees
+            // Get all nodes whose in-degrees
             // are zero
-            auto res = g.v()
-                           .with_label(_target)
-                           .r_traverse()
-                           .with_in_degree(0);
+            auto res = g.v().with_in_degree(0);
 
             // Get labels
             auto labels = res.label();

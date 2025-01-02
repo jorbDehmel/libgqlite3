@@ -15,26 +15,23 @@ Jordan Dehmel, '24
 #include <map>
 #include <optional>
 #include <stdexcept>
+#include <string>
 #include <variant>
 #include <vector>
 
 static_assert(__cplusplus >= 2020'00UL);
-static_assert(GQL_VERSION >= 000'000'003UL);
+static_assert(GQL_VERSION >= 000'001'000UL);
 
-typedef std::variant<std::string, GQL::Result, GQL::Vertices,
-                     GQL::Edges>
-    VarType;
+using VarType = std::variant<std::string, GQL::Result,
+                             GQL::Vertices, GQL::Edges>;
 
 // Optional version of VarType
-typedef std::optional<std::variant<std::string, GQL::Result,
-                                   GQL::Vertices, GQL::Edges>>
-    OptVarType;
+using OptVarType = std::optional<VarType>;
 
 // A function mapping a operand (or none) and zero or more
 // arguments to zero or one return value.
-typedef std::function<OptVarType(OptVarType,
-                                 std::vector<VarType>)>
-    OpType;
+using OpType =
+    std::function<OptVarType(OptVarType, std::vector<VarType>)>;
 
 std::vector<std::string> lex(const std::string &_fp)
 {
@@ -156,9 +153,20 @@ int main(int c, char *v[])
     std::map<std::string, VarType> variables;
 
     const std::map<std::string, OpType> operations = {
+        {"load",
+         [&](OptVarType _what,
+             std::vector<VarType> _args) -> OptVarType {
+             assert(!_what.has_value() && _args.size() == 2);
+             db_path = std::get<std::string>(_args.at(0));
+             erase =
+                 (std::get<std::string>(_args.at(1)) == "true");
+             gql = GQL(db_path, erase);
+             return {};
+         }},
         {"q",
-         [&is_running](OptVarType,
-                       std::vector<VarType>) -> OptVarType {
+         [&](OptVarType _what,
+             std::vector<VarType> _args) -> OptVarType {
+             assert(!_what.has_value() && _args.empty());
              is_running = false;
              return {};
          }},
@@ -166,7 +174,6 @@ int main(int c, char *v[])
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
              // Get all vertices
-             assert(!_what.has_value() && _args.empty());
              return gql.v();
          }},
         {"e",
@@ -180,10 +187,8 @@ int main(int c, char *v[])
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
              assert(!_what.has_value());
-             assert(
-                 _args.size() == 1 &&
-                 std::holds_alternative<std::string>(_args[0]));
-             gql.graphviz(std::get<std::string>(_args[0]));
+             assert(_args.size() == 1);
+             gql.graphviz(std::get<std::string>(_args.at(0)));
              return {};
          }},
         {"commit",
@@ -212,11 +217,8 @@ int main(int c, char *v[])
         {"as",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
-             // Alias _what as _args[0]
-             assert(
-                 _args.size() == 1 && _what.has_value() &&
-                 std::holds_alternative<std::string>(_args[0]));
-             variables[std::get<std::string>(_args[0])] =
+             assert(_args.size() == 1 && _what.has_value());
+             variables[std::get<std::string>(_args.at(0))] =
                  _what.value();
              return {};
          }},
@@ -225,187 +227,136 @@ int main(int c, char *v[])
              std::vector<VarType> _args) -> OptVarType {
              // SQL where clause
              assert(_what.has_value());
-             assert(std::holds_alternative<GQL::Edges>(
-                        _what.value()) ||
-                    std::holds_alternative<GQL::Vertices>(
-                        _what.value()));
-             assert(
-                 _args.size() == 1 &&
-                 std::holds_alternative<std::string>(_args[0]));
+             assert(_args.size() == 1);
 
              if (std::holds_alternative<GQL::Edges>(
                      _what.value()))
              {
                  return std::get<GQL::Edges>(_what.value())
-                     .where(std::get<std::string>(_args[0]));
+                     .where(std::get<std::string>(_args.at(0)));
              }
              else
              {
                  return std::get<GQL::Vertices>(_what.value())
-                     .where(std::get<std::string>(_args[0]));
+                     .where(std::get<std::string>(_args.at(0)));
              }
          }},
         {"with_label",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
-             assert(_args.size() == 1 &&
-                    std::holds_alternative<std::string>(
-                        _args[0]) &&
-                    _what.has_value());
-             assert(std::holds_alternative<GQL::Vertices>(
-                        _what.value()) ||
-                    std::holds_alternative<GQL::Edges>(
-                        _what.value()));
+             assert(_args.size() == 1 && _what.has_value());
              if (std::holds_alternative<GQL::Vertices>(
                      _what.value()))
              {
                  return std::get<GQL::Vertices>(_what.value())
                      .with_label(
-                         std::get<std::string>(_args[0]));
+                         std::get<std::string>(_args.at(0)));
              }
              else
              {
                  return std::get<GQL::Edges>(_what.value())
                      .with_label(
-                         std::get<std::string>(_args[0]));
+                         std::get<std::string>(_args.at(0)));
              }
          }},
         {"with_tag",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
-             assert(
-                 _args.size() == 2 &&
-                 std::holds_alternative<std::string>(
-                     _args[0]) &&
-                 std::holds_alternative<std::string>(_args[1]));
-             assert(_what.has_value() &&
-                    (std::holds_alternative<GQL::Vertices>(
-                         _what.value()) ||
-                     std::holds_alternative<GQL::Edges>(
-                         _what.value())));
+             assert(_args.size() == 2);
+             assert(_what.has_value());
              if (std::holds_alternative<GQL::Vertices>(
                      _what.value()))
              {
                  return std::get<GQL::Vertices>(_what.value())
-                     .with_tag(std::get<std::string>(_args[0]),
-                               std::get<std::string>(_args[1]));
+                     .with_tag(
+                         std::get<std::string>(_args.at(0)),
+                         std::get<std::string>(_args.at(1)));
              }
              else
              {
                  return std::get<GQL::Edges>(_what.value())
-                     .with_tag(std::get<std::string>(_args[0]),
-                               std::get<std::string>(_args[1]));
+                     .with_tag(
+                         std::get<std::string>(_args.at(0)),
+                         std::get<std::string>(_args.at(1)));
              }
          }},
         {"with_id",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
-             assert(_args.size() == 1 &&
-                    std::holds_alternative<std::string>(
-                        _args[0]) &&
-                    _what.has_value());
-             assert(std::holds_alternative<GQL::Vertices>(
-                        _what.value()) ||
-                    std::holds_alternative<GQL::Edges>(
-                        _what.value()));
+             assert(_args.size() == 1 && _what.has_value());
              if (std::holds_alternative<GQL::Vertices>(
                      _what.value()))
              {
                  return std::get<GQL::Vertices>(_what.value())
                      .with_id(std::stoi(
-                         std::get<std::string>(_args[0])));
+                         std::get<std::string>(_args.at(0))));
              }
              else
              {
                  return std::get<GQL::Edges>(_what.value())
                      .with_id(std::stoi(
-                         std::get<std::string>(_args[0])));
+                         std::get<std::string>(_args.at(0))));
              }
          }},
         {"join",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
              assert(_args.size() == 1 && _what.has_value());
-             assert(std::holds_alternative<GQL::Vertices>(
-                        _what.value()) ||
-                    std::holds_alternative<GQL::Edges>(
-                        _what.value()));
              if (std::holds_alternative<GQL::Vertices>(
                      _what.value()))
              {
-                 assert(std::holds_alternative<GQL::Vertices>(
-                     _args[0]));
                  return std::get<GQL::Vertices>(_what.value())
-                     .join(std::get<GQL::Vertices>(_args[0]));
+                     .join(
+                         std::get<GQL::Vertices>(_args.at(0)));
              }
              else
              {
-                 assert(std::holds_alternative<GQL::Edges>(
-                     _args[0]));
                  return std::get<GQL::Edges>(_what.value())
-                     .join(std::get<GQL::Edges>(_args[0]));
+                     .join(std::get<GQL::Edges>(_args.at(0)));
              }
          }},
         {"intersection",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
              assert(_args.size() == 1 && _what.has_value());
-             assert(std::holds_alternative<GQL::Vertices>(
-                        _what.value()) ||
-                    std::holds_alternative<GQL::Edges>(
-                        _what.value()));
              if (std::holds_alternative<GQL::Vertices>(
                      _what.value()))
              {
-                 assert(std::holds_alternative<GQL::Vertices>(
-                     _args[0]));
                  return std::get<GQL::Vertices>(_what.value())
                      .intersection(
-                         std::get<GQL::Vertices>(_args[0]));
+                         std::get<GQL::Vertices>(_args.at(0)));
              }
              else
              {
                  assert(std::holds_alternative<GQL::Edges>(
-                     _args[0]));
+                     _args.at(0)));
                  return std::get<GQL::Edges>(_what.value())
                      .intersection(
-                         std::get<GQL::Edges>(_args[0]));
+                         std::get<GQL::Edges>(_args.at(0)));
              }
          }},
         {"complement",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
              assert(_args.size() == 1 && _what.has_value());
-             assert(std::holds_alternative<GQL::Vertices>(
-                        _what.value()) ||
-                    std::holds_alternative<GQL::Edges>(
-                        _what.value()));
              if (std::holds_alternative<GQL::Vertices>(
                      _what.value()))
              {
-                 assert(std::holds_alternative<GQL::Vertices>(
-                     _args[0]));
                  return std::get<GQL::Vertices>(_what.value())
                      .complement(
-                         std::get<GQL::Vertices>(_args[0]));
+                         std::get<GQL::Vertices>(_args.at(0)));
              }
              else
              {
-                 assert(std::holds_alternative<GQL::Edges>(
-                     _args[0]));
                  return std::get<GQL::Edges>(_what.value())
                      .complement(
-                         std::get<GQL::Edges>(_args[0]));
+                         std::get<GQL::Edges>(_args.at(0)));
              }
          }},
         {"label",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
              assert(_args.size() == 0 || _args.size() == 1);
-             assert(std::holds_alternative<GQL::Vertices>(
-                        _what.value()) ||
-                    std::holds_alternative<GQL::Edges>(
-                        _what.value()));
              if (std::holds_alternative<GQL::Vertices>(
                      _what.value()))
              {
@@ -419,8 +370,8 @@ int main(int c, char *v[])
                  {
                      return std::get<GQL::Vertices>(
                                 _what.value())
-                         .label(
-                             std::get<std::string>(_args[0]));
+                         .label(std::get<std::string>(
+                             _args.at(0)));
                  }
              }
              else
@@ -433,8 +384,8 @@ int main(int c, char *v[])
                  else
                  {
                      return std::get<GQL::Edges>(_what.value())
-                         .label(
-                             std::get<std::string>(_args[0]));
+                         .label(std::get<std::string>(
+                             _args.at(0)));
                  }
              }
          }},
@@ -443,51 +394,41 @@ int main(int c, char *v[])
              std::vector<VarType> _args) -> OptVarType {
              assert(_what.has_value() && _args.size() > 0 &&
                     _args.size() < 3);
-             assert(std::holds_alternative<GQL::Vertices>(
-                        _what.value()) ||
-                    std::holds_alternative<GQL::Edges>(
-                        _what.value()));
              if (std::holds_alternative<GQL::Vertices>(
                      _what.value()))
              {
                  if (_args.size() == 1)
                  {
-                     assert(std::holds_alternative<std::string>(
-                         _args[0]));
                      return std::get<GQL::Vertices>(
                                 _what.value())
-                         .tag(std::get<std::string>(_args[0]));
+                         .tag(std::get<std::string>(
+                             _args.at(0)));
                  }
                  else
                  {
-                     assert(std::holds_alternative<std::string>(
-                                _args[0]) &&
-                            std::holds_alternative<std::string>(
-                                _args[1]));
                      return std::get<GQL::Vertices>(
                                 _what.value())
-                         .tag(std::get<std::string>(_args[0]),
-                              std::get<std::string>(_args[1]));
+                         .tag(
+                             std::get<std::string>(_args.at(0)),
+                             std::get<std::string>(
+                                 _args.at(1)));
                  }
              }
              else
              {
                  if (_args.size() == 1)
                  {
-                     assert(std::holds_alternative<std::string>(
-                         _args[0]));
                      return std::get<GQL::Edges>(_what.value())
-                         .tag(std::get<std::string>(_args[0]));
+                         .tag(std::get<std::string>(
+                             _args.at(0)));
                  }
                  else
                  {
-                     assert(std::holds_alternative<std::string>(
-                                _args[0]) &&
-                            std::holds_alternative<std::string>(
-                                _args[1]));
                      return std::get<GQL::Edges>(_what.value())
-                         .tag(std::get<std::string>(_args[0]),
-                              std::get<std::string>(_args[1]));
+                         .tag(
+                             std::get<std::string>(_args.at(0)),
+                             std::get<std::string>(
+                                 _args.at(1)));
                  }
              }
          }},
@@ -495,10 +436,6 @@ int main(int c, char *v[])
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
              assert(_args.empty() && _what.has_value());
-             assert(std::holds_alternative<GQL::Vertices>(
-                        _what.value()) ||
-                    std::holds_alternative<GQL::Edges>(
-                        _what.value()));
              if (std::holds_alternative<GQL::Vertices>(
                      _what.value()))
              {
@@ -514,34 +451,25 @@ int main(int c, char *v[])
         {"select",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
-             assert(_args.size() == 1 &&
-                    std::holds_alternative<std::string>(
-                        _args[0]) &&
-                    _what.has_value());
-             assert(std::holds_alternative<GQL::Vertices>(
-                        _what.value()) ||
-                    std::holds_alternative<GQL::Edges>(
-                        _what.value()));
+             assert(_args.size() == 1 && _what.has_value());
              if (std::holds_alternative<GQL::Vertices>(
                      _what.value()))
              {
                  return std::get<GQL::Vertices>(_what.value())
-                     .select(std::get<std::string>(_args[0]));
+                     .select(
+                         std::get<std::string>(_args.at(0)));
              }
              else
              {
                  return std::get<GQL::Edges>(_what.value())
-                     .select(std::get<std::string>(_args[0]));
+                     .select(
+                         std::get<std::string>(_args.at(0)));
              }
          }},
         {"erase",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
              assert(_args.empty() && _what.has_value());
-             assert(std::holds_alternative<GQL::Vertices>(
-                        _what.value()) ||
-                    std::holds_alternative<GQL::Edges>(
-                        _what.value()));
              if (std::holds_alternative<GQL::Vertices>(
                      _what.value()))
              {
@@ -554,167 +482,96 @@ int main(int c, char *v[])
                  return {};
              }
          }},
-        {"traverse",
-         [&](OptVarType _what,
-             std::vector<VarType> _args) -> OptVarType {
-             assert(_what.has_value() &&
-                    std::holds_alternative<GQL::Vertices>(
-                        _what.value()) &&
-                    _args.size() < 3);
-             if (_args.size() == 0)
-             {
-                 return std::get<GQL::Vertices>(_what.value())
-                     .traverse();
-             }
-             else if (_args.size() == 1)
-             {
-                 assert(std::holds_alternative<std::string>(
-                     _args[0]));
-                 return std::get<GQL::Vertices>(_what.value())
-                     .traverse(std::get<std::string>(_args[0]));
-             }
-             else
-             {
-                 assert(std::holds_alternative<std::string>(
-                            _args[0]) &&
-                        std::holds_alternative<std::string>(
-                            _args[1]));
-                 return std::get<GQL::Vertices>(_what.value())
-                     .traverse(std::get<std::string>(_args[0]),
-                               std::get<std::string>(_args[1]));
-             }
-         }},
-        {"r_traverse",
-         [&](OptVarType _what, std::vector<VarType> _args)
-             -> OptVarType { return {}; }},
         {"add_edge",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
-             assert(_what.has_value() &&
-                    std::holds_alternative<GQL::Vertices>(
-                        _what.value()) &&
-                    _args.size() == 1 &&
-                    std::holds_alternative<GQL::Vertices>(
-                        _args[0]));
+             assert(_what.has_value() && _args.size() == 1);
              return std::get<GQL::Vertices>(_what.value())
-                 .add_edge(std::get<GQL::Vertices>(_args[0]));
+                 .add_edge(
+                     std::get<GQL::Vertices>(_args.at(0)));
          }},
         {"in",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
-             assert(_what.has_value() &&
-                    std::holds_alternative<GQL::Vertices>(
-                        _what.value()) &&
-                    _args.empty());
+             assert(_what.has_value() && _args.empty());
              return std::get<GQL::Vertices>(_what.value()).in();
          }},
         {"out",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
-             assert(_what.has_value() &&
-                    std::holds_alternative<GQL::Vertices>(
-                        _what.value()) &&
-                    _args.empty());
+             assert(_what.has_value() && _args.empty());
              return std::get<GQL::Vertices>(_what.value())
                  .out();
          }},
         {"with_in_degree",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
-             assert(
-                 _what.has_value() &&
-                 std::holds_alternative<GQL::Vertices>(
-                     _what.value()) &&
-                 _args.size() > 0 && _args.size() < 3 &&
-                 std::holds_alternative<std::string>(_args[0]));
-             assert(
-                 _args.size() == 1 ||
-                 std::holds_alternative<std::string>(_args[1]));
+             assert(_what.has_value() && _args.size() > 0 &&
+                    _args.size() < 3);
+             assert(_args.size() == 1);
              if (_args.size() == 1)
              {
                  return std::get<GQL::Vertices>(_what.value())
                      .with_in_degree(std::stoi(
-                         std::get<std::string>(_args[0])));
+                         std::get<std::string>(_args.at(0))));
              }
              else
              {
                  return std::get<GQL::Vertices>(_what.value())
                      .with_in_degree(
-                         std::stoi(
-                             std::get<std::string>(_args[0])),
-                         std::get<std::string>(_args[1]));
+                         std::stoi(std::get<std::string>(
+                             _args.at(0))),
+                         std::get<std::string>(_args.at(1)));
              }
          }},
         {"with_out_degree",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
-             assert(
-                 _what.has_value() &&
-                 std::holds_alternative<GQL::Vertices>(
-                     _what.value()) &&
-                 _args.size() > 0 && _args.size() < 3 &&
-                 std::holds_alternative<std::string>(_args[0]));
-             assert(
-                 _args.size() == 1 ||
-                 std::holds_alternative<std::string>(_args[1]));
+             assert(_what.has_value() && _args.size() > 0 &&
+                    _args.size() < 3);
+             assert(_args.size() == 1);
              if (_args.size() == 1)
              {
                  return std::get<GQL::Vertices>(_what.value())
                      .with_out_degree(std::stoi(
-                         std::get<std::string>(_args[0])));
+                         std::get<std::string>(_args.at(0))));
              }
              else
              {
                  return std::get<GQL::Vertices>(_what.value())
                      .with_out_degree(
-                         std::stoi(
-                             std::get<std::string>(_args[0])),
-                         std::get<std::string>(_args[1]));
+                         std::stoi(std::get<std::string>(
+                             _args.at(0))),
+                         std::get<std::string>(_args.at(1)));
              }
          }},
         {"with_source",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
-             assert(_what.has_value() &&
-                    std::holds_alternative<GQL::Edges>(
-                        _what.value()) &&
-                    _args.size() == 1 &&
-                    std::holds_alternative<GQL::Vertices>(
-                        _args[0]));
+             assert(_what.has_value() && _args.size() == 1);
              return std::get<GQL::Edges>(_what.value())
                  .with_source(
-                     std::get<GQL::Vertices>(_args[0]));
+                     std::get<GQL::Vertices>(_args.at(0)));
          }},
         {"with_target",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
-             assert(_what.has_value() &&
-                    std::holds_alternative<GQL::Edges>(
-                        _what.value()) &&
-                    _args.size() == 1 &&
-                    std::holds_alternative<GQL::Vertices>(
-                        _args[0]));
+             assert(_what.has_value() && _args.size() == 1);
              return std::get<GQL::Edges>(_what.value())
                  .with_target(
-                     std::get<GQL::Vertices>(_args[0]));
+                     std::get<GQL::Vertices>(_args.at(0)));
          }},
         {"source",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
-             assert(_what.has_value() &&
-                    std::holds_alternative<GQL::Edges>(
-                        _what.value()) &&
-                    _args.empty());
+             assert(_what.has_value() && _args.empty());
              return std::get<GQL::Edges>(_what.value())
                  .source();
          }},
         {"target",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
-             assert(_what.has_value() &&
-                    std::holds_alternative<GQL::Edges>(
-                        _what.value()) &&
-                    _args.empty());
+             assert(_what.has_value() && _args.empty());
              return std::get<GQL::Edges>(_what.value())
                  .target();
          }}};
@@ -809,15 +666,43 @@ int main(int c, char *v[])
         }
         else if (std::holds_alternative<GQL::Vertices>(val))
         {
-            std::cout << "<Vertices object>";
+            for (const auto &v :
+                 std::get<GQL::Vertices>(val).each())
+            {
+                std::cout << "+ " << v.id()["id"][0] << " '"
+                          << v.label()["label"][0] << "'";
+                for (const std::string &key : v.keys()["key"])
+                {
+                    std::cout << '\n'
+                              << "|- '" << key
+                              << "': " << v.tag(key)[key][0];
+                }
+                std::cout << '\n';
+            }
         }
         else // GQL::Edges
         {
-            std::cout << "<Edges object>";
+            for (const auto &v :
+                 std::get<GQL::Edges>(val).each())
+            {
+                std::cout << "+ " << v.id()["id"][0] << ": "
+                          << v.source().id()["id"][0] << " -> "
+                          << v.target().id()["id"][0] << " '"
+                          << v.label()["label"][0] << "'";
+                for (const std::string &key : v.keys()["key"])
+                {
+                    std::cout << '\n'
+                              << "|- '" << key
+                              << "': " << v.tag(key)[key][0];
+                }
+                std::cout << '\n';
+            }
         }
 
         std::cout << '\n';
     }
+    std::cout << "SQL call counter: " << gql.sql_call_counter
+              << "\n";
 
     return 0;
 }

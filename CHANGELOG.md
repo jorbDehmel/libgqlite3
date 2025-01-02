@@ -8,6 +8,10 @@ the remaining digits are the major version. For instance, the
 code `000000003` is equivalent to `0.0.3` and the code
 `123456001` is `123.456.1.`
 
+## `0.1.0`
+- Fixed some pedantic compiler deprecation warnings w/ copy
+    constructors in `Vertices` and `Edges`
+
 ## `0.0.5`
 - Added "bouncing" to avoid stack overflows in sqlite
 - Added bounce test in unit testing

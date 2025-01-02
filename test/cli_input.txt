@@ -5,7 +5,8 @@ v()
 add_vertex()
     .label("Alice");
 add_vertex()
-    .label("Bob");
+    .label("Bob")
+    .tag("last name", "Crabbit");
 
 v()
     .with_label("Alice")
@@ -22,3 +23,6 @@ v()
 e()
     .label()
     .as("relations");
+
+v().as("all the nodes");
+e().as("all the edges");

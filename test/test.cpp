@@ -5,6 +5,8 @@ Unit tests for GQL
 #include "../src/gql.hpp"
 
 #include <cassert>
+#include <filesystem>
+#include <set>
 #include <string>
 #include <sys/types.h>
 
@@ -463,75 +465,40 @@ void test_edge_queries()
     }
 }
 
-void test_traversals()
+void test_each()
 {
-    /*
-    0 --> 1 --> 2 --> 4 <-> 5
-          + --> 3
-    */
     GQL g("foo.db", true);
-    for (uint64_t i = 0; i <= 5; ++i)
+
+    for (uint i = 0; i < 10; ++i)
     {
-        g.add_vertex(i)
-            .label(std::to_string(i))
-            .tag("parity", std::to_string(i % 2));
+        g.add_vertex(i);
     }
-    g.v().with_id(0).add_edge(g.v().with_id(1));
-    g.v().with_id(1).add_edge(g.v("id = 2 OR id = 3"));
-    g.v().with_id(2).add_edge(g.v().with_id(4));
-    g.v().with_id(4).add_edge(g.v().with_id(5));
-    g.v().with_id(5).add_edge(g.v().with_id(4));
-    g.e().label("foo");
-    g.e().where("target = 5").label("fizz");
-    g.e().where("target = 4").label("buzz");
 
-    // Forward unconditional
-    assert_eq(g.v().with_id(0).traverse().id()["id"],
-              {"0", "1", "2", "3", "4", "5"});
-    assert_eq(g.v().with_id(2).traverse().id()["id"],
-              {"2", "4", "5"});
-    assert_eq(g.v().with_id(5).traverse().id()["id"],
-              {"4", "5"});
+    for (const auto &item : g.v().each())
+    {
+        assert(item.id()["id"].size() == 1);
+    }
+}
 
-    // Forward edge conditional
-    assert_eq(g.v()
-                  .with_id(0)
-                  .traverse("1", "label != 'fizz'")
-                  .id()["id"],
-              {"0", "1", "2", "3", "4"});
+void test_persistence()
+{
+    const static std::string f = "foo.db";
 
-    // Forward node conditional
-    assert_eq(g.v().with_id(0).traverse("id != 4").id()["id"],
-              {"0", "1", "2", "3"});
+    // Create a persistent node
+    {
+        GQL g(f, true, true);
+        g.add_vertex(1234);
+    }
+    assert(std::filesystem::exists(f));
 
-    // Forward both conditional
-    assert_eq(g.v()
-                  .with_id(0)
-                  .traverse("id != 3", "label != 'fizz'")
-                  .id()["id"],
-              {"0", "1", "2", "4"});
+    // Create a non-persistent node
+    {
+        GQL g(f, false, false);
 
-    // Backward unconditional
-    assert_eq(g.v().with_id(5).r_traverse().id()["id"],
-              {"0", "1", "2", "4", "5"});
-
-    // Backward edge conditional
-    assert_eq(g.v()
-                  .with_id(5)
-                  .r_traverse("1", "label != 'fizz'")
-                  .id()["id"],
-              {"5"});
-
-    // Backward node conditional
-    assert_eq(g.v().with_id(5).r_traverse("id != 1").id()["id"],
-              {"2", "4", "5"});
-
-    // Backward both conditional
-    assert_eq(g.v()
-                  .with_id(5)
-                  .r_traverse("id != 1", "label != 'buzz'")
-                  .id()["id"],
-              {"4", "5"});
+        // Assert tables persisted
+        assert(!g.v().with_id(1234).id().empty());
+    }
+    assert(!std::filesystem::exists(f));
 }
 
 void test_bounce()
@@ -557,6 +524,38 @@ void test_bounce()
     assert(std::stoull(query.id()["id"][0]) == max);
 }
 
+void test_keys()
+{
+    GQL g("foo.db", true);
+
+    g.add_vertex(123)
+        .tag("key1", "100")
+        .tag("key1", "200")
+        .tag("key2", "300")
+        .tag("key3", "400");
+
+    const auto keys = g.v().with_id(123).keys()["key"];
+    const auto keyset =
+        std::set<std::string>(keys.begin(), keys.end());
+    assert(keyset.size() == 3);
+    assert(keyset.contains("key1"));
+    assert(keyset.contains("key2"));
+    assert(keyset.contains("key3"));
+}
+
+void test_hex()
+{
+    assert(hex_encode("aB1 !") == "6142312021");
+
+    for (const auto &s :
+         {"Hello, world!", "The quick Brown",
+          "1 lazy D06 D035 n0t c0un7!!?$#", __FILE__,
+          __FILE_NAME__, __FUNCTION__})
+    {
+        assert(s == hex_decode(hex_encode(s)));
+    }
+}
+
 ////////////////////////////////////////////////////////////////
 
 int main()
@@ -570,11 +569,14 @@ int main()
     test_manager_queries();
     test_vertex_queries();
     test_edge_queries();
-    test_traversals();
+    test_each();
     test_limit();
     test_set_operations();
     test_lemma();
     test_multiple_tag_getter();
+    test_persistence();
+    test_keys();
+    test_hex();
     test_bounce();
 
     // Clean up
