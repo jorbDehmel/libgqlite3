@@ -2,7 +2,7 @@
 ![Test Badge](https://github.com/jorbDehmel/gql/actions/workflows/ci-test.yml/badge.svg)
 
 # GQL (Graph SQLite3)
-Jordan Dehmel, 2024
+Jordan Dehmel, 2024, MIT License
 
 ## Outline
 
@@ -30,6 +30,8 @@ assume or expect it to work on Windows.
 You must meet the following requirements:
 - `C++` 11 or later (`g++ -std=c++20` is used for testing)
 - `libsqlite3-dev` (the `C` headers, not just the CLI)
+
+To check your environment, run `make check`.
 
 **Warning:** This software relies on `std::format`, which is
 only sometimes provided. If it does not exist on your machine,

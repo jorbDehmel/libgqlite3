@@ -2,6 +2,19 @@
 install:	src/gql.hpp
 	sudo cp src/*.hpp /usr/include
 
+.PHONY:	check
+check:
+	@echo "Checking for libsqlite3-dev..."
+	@find /usr/include -type f -iname "sqlite3.h" | grep / > /dev/null
+
+	@echo "Checking for C++11..."
+	@g++ -std=c++11 -D DESIRED_VERSION=201100ULL -c -o /dev/null test/assert_version.cpp > /dev/null
+
+	@echo "Checking for C++20..."
+	@g++ -std=c++20 -D DESIRED_VERSION=202000ULL -c -o /dev/null test/assert_version.cpp > /dev/null
+
+	@echo "Environment is valid."
+
 .PHONY:	format
 format:
 	find . \( -iname '*.cpp' -or -iname '*.hpp' \) \
