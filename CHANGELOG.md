@@ -11,6 +11,9 @@ code `000000003` is equivalent to `0.0.3` and the code
 ## `0.1.0`
 - Fixed some pedantic compiler deprecation warnings w/ copy
     constructors in `Vertices` and `Edges`
+- Reformatted testing Makefile
+- Added `make check` for environment checking
+- Added doxygen to `gql.hpp`
 
 ## `0.0.5`
 - Added "bouncing" to avoid stack overflows in sqlite

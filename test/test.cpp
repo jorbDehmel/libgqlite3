@@ -344,6 +344,10 @@ void test_vertex_queries()
     3  2  0
     */
 
+    g.graphviz("test_vertex_queries:247.dot");
+    system("dot -Tpng test_vertex_queries:247.dot -o "
+           "test_vertex_queries:247.png");
+
     g.v()
         .with_tag("is_first", "true")
         .complement(g.v())
@@ -351,6 +355,7 @@ void test_vertex_queries()
 
     // Where
     assert_eq(g.v().where("id < 2").id()["id"], {"1"});
+
     assert(g.v().where("id > 3").id().empty());
 
     // Traversing with labels and tags
@@ -563,20 +568,49 @@ int main()
     std::cout << "Running GQL unit tests...\n";
 
     // Run tests
+    std::cout << "test_merge_rows();\n";
     test_merge_rows();
+
+    std::cout << "test_open();\n";
     test_open();
+
+    std::cout << "test_creation();\n";
     test_creation();
+
+    std::cout << "test_manager_queries();\n";
     test_manager_queries();
+
+    std::cout << "test_vertex_queries();\n";
     test_vertex_queries();
+
+    std::cout << "test_edge_queries();\n";
     test_edge_queries();
+
+    std::cout << "test_each();\n";
     test_each();
+
+    std::cout << "test_limit();\n";
     test_limit();
+
+    std::cout << "test_set_operations();\n";
     test_set_operations();
+
+    std::cout << "test_lemma();\n";
     test_lemma();
+
+    std::cout << "test_multiple_tag_getter();\n";
     test_multiple_tag_getter();
+
+    std::cout << "test_persistence();\n";
     test_persistence();
+
+    std::cout << "test_keys();\n";
     test_keys();
+
+    std::cout << "test_hex();\n";
     test_hex();
+
+    std::cout << "test_bounce();\n";
     test_bounce();
 
     // Clean up
