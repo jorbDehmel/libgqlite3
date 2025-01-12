@@ -1693,7 +1693,7 @@ inline void GQL::graphviz(
     {
         throw std::runtime_error(__gql_format_str(
             "Failed to open output graphviz file '{}'.",
-            _filepath));
+            _filepath.string()));
     }
     f << "digraph {\n\tforcelabels=true;\n";
 
