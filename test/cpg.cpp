@@ -13,10 +13,12 @@ const static std::string stmt_v = "STATEMENT",
                          pred_v = "PREDICATE", ast_v = "AST",
                          data_v = "DATA", ast_e = "AST",
                          eps_e = "EPSILON", t_e = "TRUE",
-                         f_e = "FALSE", d_e = "DATA",
-                         is_cfg = "label = '" + pred_v +
-                                  "' OR label = '" + stmt_v +
-                                  "'";
+                         f_e = "FALSE", d_e = "DATA";
+
+const static auto is_cfg = [](const GQL::Vertices &_v) -> bool {
+    auto label = _v.label()["label"][0];
+    return label == pred_v || label == stmt_v;
+};
 
 int main()
 {
@@ -157,25 +159,30 @@ int main()
     }
 
     // CFG stuff
-    g.v(is_cfg)
+    g.v()
+        .where(is_cfg)
         .with_tag("line", "1")
-        .add_edge(g.v(is_cfg).with_tag("line", "2"))
+        .add_edge(g.v().where(is_cfg).with_tag("line", "2"))
         .label(eps_e);
-    g.v(is_cfg)
+    g.v()
+        .where(is_cfg)
         .with_tag("line", "2")
-        .add_edge(g.v(is_cfg).with_tag("line", "3"))
+        .add_edge(g.v().where(is_cfg).with_tag("line", "3"))
         .label(eps_e);
-    g.v(is_cfg)
+    g.v()
+        .where(is_cfg)
         .with_tag("line", "3")
-        .add_edge(g.v(is_cfg).with_tag("line", "5"))
+        .add_edge(g.v().where(is_cfg).with_tag("line", "5"))
         .label(f_e);
-    g.v(is_cfg)
+    g.v()
+        .where(is_cfg)
         .with_tag("line", "3")
-        .add_edge(g.v(is_cfg).with_tag("line", "4"))
+        .add_edge(g.v().where(is_cfg).with_tag("line", "4"))
         .label(t_e);
-    g.v(is_cfg)
+    g.v()
+        .where(is_cfg)
         .with_tag("line", "4")
-        .add_edge(g.v(is_cfg).with_tag("line", "5"))
+        .add_edge(g.v().where(is_cfg).with_tag("line", "5"))
         .label(eps_e);
 
     // Now PDG stuff
@@ -250,67 +257,76 @@ int main()
     */
     auto p = parents(g.v().with_tag("line", "5")).tag("line");
 
-    std::cout << "All nodes:\n"
-              << g.v().select() << "All edges:\n"
-              << g.e().select() << '\n';
+    std::cout
+        << "All nodes:\n"
+        << g.v().tag(std::list<std::string>{"id", "label"})
+        << "All edges:\n"
+        << g.e().tag(std::list<std::string>{"id", "label"})
+        << '\n';
     g.graphviz("foo.dot");
     assert(system("dot -Tpng foo.dot -o foo.png") == 0);
 
-    std::cout
-        << "1\n"
-        << g.v().with_tag("line", "5").select() << "2\n"
-        << g.v().with_tag("line", "5").where(is_cfg).select()
-        << "3\n"
-        << g.v()
-               .with_tag("line", "5")
-               .where(is_cfg)
-               .out()
-               .select()
-        << "4\n"
-        << g.v()
-               .with_tag("line", "5")
-               .where(is_cfg)
-               .out()
-               .with_label(d_e)
-               .select()
-        << "5\n"
-        << g.v()
-               .with_tag("line", "5")
-               .where(is_cfg)
-               .out()
-               .with_label(d_e)
-               .target()
-               .select()
-        << "6\n"
-        << g.v()
-               .with_tag("line", "5")
-               .where(is_cfg)
-               .out()
-               .with_label(d_e)
-               .target()
-               .in()
-               .select()
-        << "7\n"
-        << g.v()
-               .with_tag("line", "5")
-               .where(is_cfg)
-               .out()
-               .with_label(d_e)
-               .target()
-               .in()
-               .with_label(d_e)
-               .select()
-        << "8\n"
-        << g.v()
-               .with_tag("line", "5")
-               .where(is_cfg)
-               .out()
-               .with_label(d_e)
-               .target()
-               .in()
-               .with_label(d_e)
-               .source()
-               .select();
+    std::cout << "1\n"
+              << g.v()
+                     .with_tag("line", "5")
+                     .tag(std::list<std::string>{"id", "label"})
+              << "2\n"
+              << g.v()
+                     .with_tag("line", "5")
+                     .where(is_cfg)
+                     .tag(std::list<std::string>{"id", "label"})
+              << "3\n"
+              << g.v()
+                     .with_tag("line", "5")
+                     .where(is_cfg)
+                     .out()
+                     .tag(std::list<std::string>{"id", "label"})
+              << "4\n"
+              << g.v()
+                     .with_tag("line", "5")
+                     .where(is_cfg)
+                     .out()
+                     .with_label(d_e)
+                     .tag(std::list<std::string>{"id", "label"})
+              << "5\n"
+              << g.v()
+                     .with_tag("line", "5")
+                     .where(is_cfg)
+                     .out()
+                     .with_label(d_e)
+                     .target()
+                     .tag(std::list<std::string>{"id", "label"})
+              << "6\n"
+              << g.v()
+                     .with_tag("line", "5")
+                     .where(is_cfg)
+                     .out()
+                     .with_label(d_e)
+                     .target()
+                     .in()
+                     .tag(std::list<std::string>{"id", "label"})
+              << "7\n"
+              << g.v()
+                     .with_tag("line", "5")
+                     .where(is_cfg)
+                     .out()
+                     .with_label(d_e)
+                     .target()
+                     .in()
+                     .with_label(d_e)
+                     .tag(std::list<std::string>{"id", "label"})
+              << "8\n"
+              << g.v()
+                     .with_tag("line", "5")
+                     .where(is_cfg)
+                     .out()
+                     .with_label(d_e)
+                     .target()
+                     .in()
+                     .with_label(d_e)
+                     .source()
+                     .tag(
+                         std::list<std::string>{"id", "label"});
 
     /*
         1 | return _what            // The nodes we were given

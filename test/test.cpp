@@ -7,21 +7,23 @@ Unit tests for GQL
 #include <cassert>
 #include <filesystem>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <sys/types.h>
 
 // If the two vectors do not match, cause a kernel panic
-inline void assert_eq(const std::vector<std::string> &_l,
-                      const std::vector<std::string> &_r)
+inline void assert_eq(const auto &_l, const auto &_r)
 {
     bool flag = false;
 
     if (_l.size() == _r.size())
     {
         flag = true;
-        for (uint64_t i = 0; i < _l.size(); ++i)
+        auto l = _l.begin();
+        auto r = _r.begin();
+        for (; l != _l.end(); ++l, ++r)
         {
-            if (_l[i] != _r[i])
+            if (*l != *r)
             {
                 flag = false;
                 break;
@@ -44,7 +46,10 @@ inline void assert_eq(const std::vector<std::string> &_l,
         std::cout << '\n';
     }
 
-    assert(flag);
+    if (!flag)
+    {
+        throw std::runtime_error("Iterables do not match.");
+    }
 }
 
 void test_merge_rows()
@@ -62,11 +67,15 @@ void test_merge_rows()
 
     a.merge_rows(b);
 
-    assert_eq(a.headers, {"id", "fizz", "buzz"});
+    assert_eq(a.headers,
+              std::vector<std::string>{"id", "fizz", "buzz"});
     assert(a.size() == 3);
-    assert_eq(a.body[0], {"1", "fizz1", "buzz1"});
-    assert_eq(a.body[1], {"23", "fizz23", "buzz23"});
-    assert_eq(a.body[2], {"98", "fizz98", "buzz98"});
+    assert_eq(a.body[0],
+              std::vector<std::string>{"1", "fizz1", "buzz1"});
+    assert_eq(a.body[1], std::vector<std::string>{
+                             "23", "fizz23", "buzz23"});
+    assert_eq(a.body[2], std::vector<std::string>{
+                             "98", "fizz98", "buzz98"});
 
     bool flag = false;
     try
@@ -90,7 +99,7 @@ void test_limit()
 
     auto r = g.v().limit(1).id();
     assert(r.size() == 1);
-    assert(r["id"][0] == "1");
+    assert(r.front() == 1);
 }
 
 void test_set_operations()
@@ -105,8 +114,10 @@ void test_set_operations()
     }
 
     // Basic sets
-    auto a = g.v().where("id <= 3");
-    auto b = g.v().where("id >= 3");
+    auto a =
+        g.v().where([](auto v) { return v.id().front() <= 3; });
+    auto b =
+        g.v().where([](auto v) { return v.id().front() >= 3; });
     auto universe = g.v();
 
     auto a_edges = a.out();
@@ -125,19 +136,12 @@ void test_set_operations()
 
         assert(u.id().size() == 5);
         assert(i.id().size() == 1);
-        assert(i.id()["id"][0] == "3");
-        assert(a_minus_b.id().size() == 2);
-        assert(a_minus_b.id()["id"][0] == "1");
-        assert(a_minus_b.id()["id"][1] == "2");
-        assert(b_minus_a.id().size() == 2);
-        assert(b_minus_a.id()["id"][0] == "4");
-        assert(b_minus_a.id()["id"][1] == "5");
-        assert(a_complement.id().size() == 2);
-        assert(a_complement.id()["id"][0] == "4");
-        assert(a_complement.id()["id"][1] == "5");
-        assert(b_complement.id().size() == 2);
-        assert(b_complement.id()["id"][0] == "1");
-        assert(b_complement.id()["id"][1] == "2");
+        assert(i.id().front() == 3);
+
+        assert_eq(a_minus_b.id(), std::list<uint64_t>{1, 2});
+        assert_eq(b_minus_a.id(), std::list<uint64_t>{4, 5});
+        assert_eq(a_complement.id(), std::list<uint64_t>{4, 5});
+        assert_eq(b_complement.id(), std::list<uint64_t>{1, 2});
     }
 
     // Edges
@@ -154,19 +158,12 @@ void test_set_operations()
 
         assert(u.id().size() == 5);
         assert(i.id().size() == 1);
-        assert(i.id()["id"][0] == "3");
-        assert(a_minus_b.id().size() == 2);
-        assert(a_minus_b.id()["id"][0] == "1");
-        assert(a_minus_b.id()["id"][1] == "2");
-        assert(b_minus_a.id().size() == 2);
-        assert(b_minus_a.id()["id"][0] == "4");
-        assert(b_minus_a.id()["id"][1] == "5");
-        assert(a_complement.id().size() == 2);
-        assert(a_complement.id()["id"][0] == "4");
-        assert(a_complement.id()["id"][1] == "5");
-        assert(b_complement.id().size() == 2);
-        assert(b_complement.id()["id"][0] == "1");
-        assert(b_complement.id()["id"][1] == "2");
+        assert(i.id().front() == 3);
+
+        assert_eq(a_minus_b.id(), std::list<uint64_t>{1, 2});
+        assert_eq(b_minus_a.id(), std::list<uint64_t>{4, 5});
+        assert_eq(a_complement.id(), std::list<uint64_t>{4, 5});
+        assert_eq(b_complement.id(), std::list<uint64_t>{1, 2});
     }
 }
 
@@ -300,26 +297,6 @@ void test_creation()
     assert(g.v().with_id(321).id().size() == 1);
 }
 
-void test_manager_queries()
-{
-    GQL g("foo.db", true);
-    for (uint64_t i = 0; i < 10; ++i)
-    {
-        g.add_vertex(i)
-            .label(std::to_string(i))
-            .add_edge(g.v().with_id(i / 2));
-    }
-
-    assert_eq(g.v().where("MOD(id, 2) == 0").id()["id"],
-              g.v("MOD(id, 2) == 0").id()["id"]);
-
-    assert_eq(g.e().where("source = target").id()["id"],
-              g.e("source = target").id()["id"]);
-
-    g.graphviz("foo.dot");
-    assert(system("dot -Tpng foo.dot -o /dev/null") == 0);
-}
-
 void test_vertex_queries()
 {
     // Setup
@@ -329,24 +306,10 @@ void test_vertex_queries()
     g.add_vertex(2).label("second");
     g.add_vertex(3).label("third");
 
-    g.v().where("id < 3").add_edge(g.v().where("id > 1"));
-    /*
-    1 -> 2, 3
-    2 -> 2, 3
-
-    1 -> 2>
-    |    v
-    + -> 3
-
-    id in out
-    1  0  2
-    2  2  2
-    3  2  0
-    */
-
-    g.graphviz("test_vertex_queries:247.dot");
-    system("dot -Tpng test_vertex_queries:247.dot -o "
-           "test_vertex_queries:247.png");
+    g.v()
+        .where([](auto v) { return v.id().front() < 3; })
+        .add_edge(g.v().where(
+            [](auto v) { return v.id().front() > 1; }));
 
     g.v()
         .with_tag("is_first", "true")
@@ -354,21 +317,33 @@ void test_vertex_queries()
         .tag("is_first", "false");
 
     // Where
-    assert_eq(g.v().where("id < 2").id()["id"], {"1"});
+    assert_eq(
+        g.v()
+            .where([](auto v) { return v.id().front() < 2; })
+            .id(),
+        std::list<uint64_t>{1});
 
-    assert(g.v().where("id > 3").id().empty());
+    assert(g.v()
+               .where([](auto v) { return v.id().front() > 3; })
+               .id()
+               .empty());
+
+    g.graphviz("vertex_queries.dot");
+
+    g.dump(std::cout);
 
     // Traversing with labels and tags
-    assert_eq(g.v().with_label("second").id()["id"], {"2"});
-    assert_eq(g.v().with_tag("is_first", "true").id()["id"],
-              {"1"});
+    assert_eq(g.v().with_label("second").id(),
+              std::list<uint64_t>{2});
+    assert_eq(g.v().with_tag("is_first", "true").id(),
+              std::list<uint64_t>{1});
 
     // Join, intersection, complement, excluding
-    assert_eq(g.v().id()["id"],
+    assert_eq(g.v().id(),
               g.v()
                   .with_tag("is_first", "true")
                   .join(g.v().with_tag("is_first", "false"))
-                  .id()["id"]);
+                  .id());
 
     assert(
         g.v()
@@ -378,21 +353,15 @@ void test_vertex_queries()
             .empty());
 
     // In and out sets
-    assert_eq(g.v().with_id(1).out().target().id()["id"],
-              {"2", "3"});
-    assert_eq(g.v().with_id(2).in().source().id()["id"],
-              {"1", "2"});
+    assert_eq(g.v().with_id(1).out().target().id(),
+              std::list<uint64_t>{2, 3});
+    assert_eq(g.v().with_id(2).in().source().id(),
+              std::list<uint64_t>{1, 2});
 
-    // In and out degrees
-    /*
-    id|i |o
-    --+--+--
-    1 |0 |2
-    2 |2 |2
-    3 |2 |0
-    */
-    assert_eq(g.v().with_in_degree(2).id()["id"], {"2", "3"});
-    assert_eq(g.v().with_out_degree(2).id()["id"], {"1", "2"});
+    assert_eq(g.v().with_in_degree(2).id(),
+              std::list<uint64_t>{2, 3});
+    assert_eq(g.v().with_out_degree(2).id(),
+              std::list<uint64_t>{1, 2});
 
     // Erasure (erasing nodes nullifies and deletes edges)
     g.v().erase();
@@ -440,7 +409,7 @@ void test_edge_queries()
                   .in()
                   .source()
                   .label()["label"],
-              {"alice", "bob"});
+              std::list<std::string>{"alice", "bob"});
 
     // Erase
     g.e().erase();
@@ -454,8 +423,15 @@ void test_edge_queries()
     g.add_vertex().label("4");
     g.add_vertex().label("5");
 
-    g.v("label IN ('1', '2', '3')")
-        .add_edge(g.v("label IN ('4', '5')"));
+    g.v()
+        .where([](auto v) -> bool {
+            const auto label = v.label()["label"][0];
+            return label == "1" || label == "2" || label == "3";
+        })
+        .add_edge(g.v().where([](auto v) -> bool {
+            const auto label = v.label()["label"][0];
+            return label == "4" || label == "5";
+        }));
 
     for (const std::string s : {"1", "2", "3"})
     {
@@ -464,7 +440,7 @@ void test_edge_queries()
             assert(!g.e()
                         .with_source(g.v().with_label(s))
                         .with_target(g.v().with_label(t))
-                        .select()
+                        .id()
                         .empty());
         }
     }
@@ -481,7 +457,7 @@ void test_each()
 
     for (const auto &item : g.v().each())
     {
-        assert(item.id()["id"].size() == 1);
+        assert(item.id().size() == 1);
     }
 }
 
@@ -526,7 +502,7 @@ void test_bounce()
     {
         query = query.out().with_label("next").target();
     }
-    assert(std::stoull(query.id()["id"][0]) == max);
+    assert(query.id().front() == max);
 }
 
 void test_keys()
@@ -539,7 +515,10 @@ void test_keys()
         .tag("key2", "300")
         .tag("key3", "400");
 
-    const auto keys = g.v().with_id(123).keys()["key"];
+    g.graphviz("test_keys.dot");
+    system("dot -Tpng -o test_keys.png test_keys.dot");
+
+    const auto keys = g.v().with_id(123).keys();
     const auto keyset =
         std::set<std::string>(keys.begin(), keys.end());
     assert(keyset.size() == 3);
@@ -565,58 +544,69 @@ void test_hex()
 
 int main()
 {
+    bool did_fail = false;
+    const static auto run_test = [&](auto _fn) {
+        try
+        {
+            _fn();
+        }
+        catch (std::runtime_error &_e)
+        {
+            std::cerr << "ERROR: " << _e.what() << '\n';
+            did_fail = true;
+        }
+    };
+
     std::cout << "Running GQL unit tests...\n";
 
     // Run tests
     std::cout << "test_merge_rows();\n";
-    test_merge_rows();
+    run_test(test_merge_rows);
 
     std::cout << "test_open();\n";
-    test_open();
+    run_test(test_open);
 
     std::cout << "test_creation();\n";
-    test_creation();
-
-    std::cout << "test_manager_queries();\n";
-    test_manager_queries();
+    run_test(test_creation);
 
     std::cout << "test_vertex_queries();\n";
-    test_vertex_queries();
+    run_test(test_vertex_queries);
 
     std::cout << "test_edge_queries();\n";
-    test_edge_queries();
+    run_test(test_edge_queries);
 
     std::cout << "test_each();\n";
-    test_each();
+    run_test(test_each);
 
     std::cout << "test_limit();\n";
-    test_limit();
+    run_test(test_limit);
 
     std::cout << "test_set_operations();\n";
-    test_set_operations();
+    run_test(test_set_operations);
 
     std::cout << "test_lemma();\n";
-    test_lemma();
+    run_test(test_lemma);
 
     std::cout << "test_multiple_tag_getter();\n";
-    test_multiple_tag_getter();
+    run_test(test_multiple_tag_getter);
 
     std::cout << "test_persistence();\n";
-    test_persistence();
+    run_test(test_persistence);
 
     std::cout << "test_keys();\n";
-    test_keys();
+    run_test(test_keys);
 
     std::cout << "test_hex();\n";
-    test_hex();
+    run_test(test_hex);
 
     std::cout << "test_bounce();\n";
-    test_bounce();
+    run_test(test_bounce);
 
     // Clean up
     system("rm -f ./foo.*");
 
     // Notify and exit
+    assert(!did_fail);
     std::cout << "All unit tests passed.\n";
     return 0;
 }

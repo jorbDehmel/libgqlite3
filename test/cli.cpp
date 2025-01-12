@@ -222,25 +222,6 @@ int main(int c, char *v[])
                  _what.value();
              return {};
          }},
-        {"where",
-         [&](OptVarType _what,
-             std::vector<VarType> _args) -> OptVarType {
-             // SQL where clause
-             assert(_what.has_value());
-             assert(_args.size() == 1);
-
-             if (std::holds_alternative<GQL::Edges>(
-                     _what.value()))
-             {
-                 return std::get<GQL::Edges>(_what.value())
-                     .where(std::get<std::string>(_args.at(0)));
-             }
-             else
-             {
-                 return std::get<GQL::Vertices>(_what.value())
-                     .where(std::get<std::string>(_args.at(0)));
-             }
-         }},
         {"with_label",
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
@@ -436,34 +417,24 @@ int main(int c, char *v[])
          [&](OptVarType _what,
              std::vector<VarType> _args) -> OptVarType {
              assert(_args.empty() && _what.has_value());
+             std::list<uint64_t> to_convert;
              if (std::holds_alternative<GQL::Vertices>(
                      _what.value()))
              {
-                 return std::get<GQL::Vertices>(_what.value())
-                     .id();
+                 to_convert =
+                     std::get<GQL::Vertices>(_what.value())
+                         .id();
              }
              else
              {
-                 return std::get<GQL::Edges>(_what.value())
-                     .id();
+                 to_convert =
+                     std::get<GQL::Edges>(_what.value()).id();
              }
-         }},
-        {"select",
-         [&](OptVarType _what,
-             std::vector<VarType> _args) -> OptVarType {
-             assert(_args.size() == 1 && _what.has_value());
-             if (std::holds_alternative<GQL::Vertices>(
-                     _what.value()))
+             GQL::Result out;
+             out.headers = {"id"};
+             for (const auto &item : to_convert)
              {
-                 return std::get<GQL::Vertices>(_what.value())
-                     .select(
-                         std::get<std::string>(_args.at(0)));
-             }
-             else
-             {
-                 return std::get<GQL::Edges>(_what.value())
-                     .select(
-                         std::get<std::string>(_args.at(0)));
+                 out.body.push_back({std::to_string(item)});
              }
          }},
         {"erase",
@@ -509,20 +480,9 @@ int main(int c, char *v[])
              assert(_what.has_value() && _args.size() > 0 &&
                     _args.size() < 3);
              assert(_args.size() == 1);
-             if (_args.size() == 1)
-             {
-                 return std::get<GQL::Vertices>(_what.value())
-                     .with_in_degree(std::stoi(
-                         std::get<std::string>(_args.at(0))));
-             }
-             else
-             {
-                 return std::get<GQL::Vertices>(_what.value())
-                     .with_in_degree(
-                         std::stoi(std::get<std::string>(
-                             _args.at(0))),
-                         std::get<std::string>(_args.at(1)));
-             }
+             return std::get<GQL::Vertices>(_what.value())
+                 .with_in_degree(std::stoi(
+                     std::get<std::string>(_args.at(0))));
          }},
         {"with_out_degree",
          [&](OptVarType _what,
@@ -530,20 +490,9 @@ int main(int c, char *v[])
              assert(_what.has_value() && _args.size() > 0 &&
                     _args.size() < 3);
              assert(_args.size() == 1);
-             if (_args.size() == 1)
-             {
-                 return std::get<GQL::Vertices>(_what.value())
-                     .with_out_degree(std::stoi(
-                         std::get<std::string>(_args.at(0))));
-             }
-             else
-             {
-                 return std::get<GQL::Vertices>(_what.value())
-                     .with_out_degree(
-                         std::stoi(std::get<std::string>(
-                             _args.at(0))),
-                         std::get<std::string>(_args.at(1)));
-             }
+             return std::get<GQL::Vertices>(_what.value())
+                 .with_out_degree(std::stoi(
+                     std::get<std::string>(_args.at(0))));
          }},
         {"with_source",
          [&](OptVarType _what,
@@ -669,9 +618,9 @@ int main(int c, char *v[])
             for (const auto &v :
                  std::get<GQL::Vertices>(val).each())
             {
-                std::cout << "+ " << v.id()["id"][0] << " '"
+                std::cout << "+ " << v.id().front() << " '"
                           << v.label()["label"][0] << "'";
-                for (const std::string &key : v.keys()["key"])
+                for (const std::string &key : v.keys())
                 {
                     std::cout << '\n'
                               << "|- '" << key
@@ -685,11 +634,11 @@ int main(int c, char *v[])
             for (const auto &v :
                  std::get<GQL::Edges>(val).each())
             {
-                std::cout << "+ " << v.id()["id"][0] << ": "
-                          << v.source().id()["id"][0] << " -> "
-                          << v.target().id()["id"][0] << " '"
+                std::cout << "+ " << v.id().front() << ": "
+                          << v.source().id().front() << " -> "
+                          << v.target().id().front() << " '"
                           << v.label()["label"][0] << "'";
-                for (const std::string &key : v.keys()["key"])
+                for (const std::string &key : v.keys())
                 {
                     std::cout << '\n'
                               << "|- '" << key

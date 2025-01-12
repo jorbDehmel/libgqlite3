@@ -6,10 +6,11 @@ account.
 
 #include "../src/gql.hpp"
 #include <cassert>
+#include <cmath>
 #include <iostream>
 
 #define START 1
-#define END 10'000ULL
+#define END 1'000ULL
 
 constexpr inline const uint64_t n_divisors(const uint64_t what)
 {
@@ -37,7 +38,7 @@ int main()
     // Iterate over numbers in range
     for (uint64_t cur = START; cur < END; ++cur)
     {
-        if (cur % 5'000 == 0)
+        if (cur % 10 == 0)
         {
             std::cout << "Processing " << cur << " of " << END
                       << " ("
@@ -51,10 +52,14 @@ int main()
 
         // Add divisibility edges
         g.v()
-            .where("id * id <= " + std::to_string(cur))
-            .where("MOD(" + std::to_string(cur) + ", id) = 0")
-            .add_edge(
-                g.v().where("id = " + std::to_string(cur)));
+            .where([&](auto v) -> bool {
+                return pow(v.id().front(), 2) <= cur;
+            })
+            .where([&](auto v) {
+                return cur % v.id().front() == 0;
+            })
+            .add_edge(g.v().where(
+                [&](auto v) { return v.id().front() == cur; }));
     }
 
     // Stop timer

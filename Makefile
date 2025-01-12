@@ -30,4 +30,6 @@ test:
 .PHONY:	clean
 clean:
 	find . \( -iname '*.o' -or -iname '*.out' -or \
-		-iname '*.db' -or -iname '*.dot' \) -exec rm -f "{}" \;
+		-iname '*.db' -or -iname '*.db-journal' -or \
+		-iname '*.dot' -or -iname '*.png' \) \
+		-exec rm -f "{}" \;
