@@ -19,7 +19,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install g++ graphviz
+        sudo apt install -y g++ graphviz libsqlite3-dev
 
     - name: Run tests
       run: |
