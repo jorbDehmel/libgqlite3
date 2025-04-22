@@ -8,6 +8,13 @@ the remaining digits are the major version. For instance, the
 code `000000003` is equivalent to `0.0.3` and the code
 `123456001` is `123.456.1.`
 
+## `0.2.1` (4/22/2025)
+- Changed from `Microsoft` to `LLVM` `clang-format` style
+- Added `Doxyfile`, improved Doxygen support
+- Changed default database path to `:memory:` (memory-only, no
+    disk usage)
+- Added checks for database file existence before any erasures
+
 ## `0.2.0`
 - Replaced unsafe exposed SQL clauses w/ lambdas
 - Increased safety in interface

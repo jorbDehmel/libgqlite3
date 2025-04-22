@@ -27,6 +27,12 @@ format:
 test:
 	$(MAKE) -C test
 
+.PHONY: docs
+docs:
+	doxygen -q
+	$(MAKE) -C latex
+	cp latex/refman.pdf refman.pdf
+
 .PHONY:	clean
 clean:
 	find . \( -iname '*.o' -or -iname '*.out' -or \

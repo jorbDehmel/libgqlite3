@@ -1,7 +1,7 @@
 
 ![Test Badge](https://github.com/jorbDehmel/gql/actions/workflows/ci-test.yml/badge.svg)
 
-# GQL (Graph SQLite3)
+# GQL / `libgqlite3` (Graph SQLite3)
 Jordan Dehmel, 2024, MIT License
 
 ## Outline
@@ -39,14 +39,14 @@ this software is likely to run slower and be more bug-prone.
 
 ## Installation
 
-1) Clone this repo locally
-2) Navigate to this directory
+1. Clone this repo locally
+2. Navigate to this directory
 
 ### Use Case 1: `#include <gql.hpp>` (system-wide install)
-3) From this directory, run `make install`
+3. From this directory, run `make install`
 
 ### Use Case 2: `#include "./gql.hpp"` (casual local install)
-3) Simply copy-paste the local file `./src/gql.hpp` anywhere you
+3. Simply copy-paste the local file `./src/gql.hpp` anywhere you
     want to use it. This is allowed by the licensing without
     acknowledgment, and the entirety of the MIT license is
     included in the header file.
@@ -150,6 +150,15 @@ node.tag("fizz", "buzz");
 // key-value pair ("foo", "bar").
 g.add_edge(node, 100).label("some edge").tag("foo", "bar");
 
+```
+
+If no file path is provided to the constructor, the graph will be
+**memory-only** (provided that your local installation of
+`libsqlite3` honors the `:memory:` keyword).
+
+```cpp
+// Memory-only: Not saved to disk
+GQL g;
 ```
 
 ## Query Types

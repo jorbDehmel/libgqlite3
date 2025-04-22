@@ -5,4 +5,8 @@
 *.log
 *.dot
 *.png
+*.pdf
 foo.*
+
+html/
+latex/
