@@ -35,6 +35,7 @@ docs:
 
 .PHONY:	clean
 clean:
+	rm -rf html/ latex/ refman.pdf
 	find . \( -iname '*.o' -or -iname '*.out' -or \
 		-iname '*.db' -or -iname '*.db-journal' -or \
 		-iname '*.dot' -or -iname '*.png' \) \

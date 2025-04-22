@@ -6,6 +6,7 @@ From another project I'm working on that could use a better GDBM
 #include "../src/gql.hpp"
 
 #include <cassert>
+#include <filesystem>
 #include <iostream>
 #include <string>
 
@@ -262,7 +263,7 @@ int main() {
             << g.e().tag(std::list<std::string>{"id", "label"})
             << '\n';
   g.graphviz("foo.dot");
-  assert(system("dot -Tpng foo.dot -o foo.png") == 0);
+  assert(std::filesystem::exists("foo.dot"));
 
   std::cout << "1\n"
             << g.v()

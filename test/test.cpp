@@ -473,7 +473,7 @@ void test_keys() {
       .tag("key3", "400");
 
   g.graphviz("test_keys.dot");
-  system("dot -Tpng -o test_keys.png test_keys.dot");
+  assert(std::filesystem::exists("test_keys.dot"));
 
   const auto keys = g.v().with_id(123).keys();
   const auto keyset =
@@ -554,7 +554,13 @@ int main() {
   run_test(test_bounce);
 
   // Clean up
-  system("rm -f ./foo.*");
+  for (const auto &entry :
+       std::filesystem::directory_iterator{"."}) {
+    if (std::filesystem::is_regular_file(entry) &&
+        entry.path().string().starts_with("foo.")) {
+      std::filesystem::remove_all(entry);
+    }
+  }
 
   // Notify and exit
   assert(!did_fail);
