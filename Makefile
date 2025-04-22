@@ -26,6 +26,7 @@ format:
 .PHONY:	test
 test:
 	$(MAKE) -C test
+	$(MAKE) -C cli test
 
 .PHONY: docs
 docs:

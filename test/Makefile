@@ -8,15 +8,7 @@ CFLAGS := $(LFLAGS)
 LIBS := -lsqlite3
 
 .PHONY:	all
-all:	$(TESTS) $(FORMAT_TESTS) cli.out cli.format.out
-	./cli.out cli_input.txt
-	./cli.format.out cli_input.txt
-
-cli.out:	cli.o
-	$(CC) $(LFLAGS) -o $@ $^ $(LIBS)
-
-cli.format.out:	cli.format.o
-	$(CC) $(LFLAGS) -o $@ $^ $(LIBS)
+all:	$(TESTS) $(FORMAT_TESTS)
 
 %.out:	%.o
 	$(CC) $(LFLAGS) -o $@ $^ $(LIBS)

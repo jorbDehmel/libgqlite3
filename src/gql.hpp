@@ -76,7 +76,7 @@ const static uint GQL_MAJOR_VERSION = 000;
 const static uint GQL_MINOR_VERSION = 002;
 
 /// The patch (xxx.xxx.PAT) version of GQL
-const static uint GQL_PATCH_VERSION = 001;
+const static uint GQL_PATCH_VERSION = 002;
 
 /**
  * @var GQL_VERSION
@@ -795,6 +795,9 @@ public:
   /// Increments with each SQL query submitted (bounce or
   /// normal resolution)
   uint64_t sql_call_counter = 0;
+
+  /// Getter for the filepath
+  std::filesystem::path get_filepath() const noexcept;
 
 protected:
   /// Get all vertices where some SQL WHERE clause holds
@@ -1647,4 +1650,10 @@ inline std::ostream &operator<<(std::ostream &_strm,
   }
 
   return _strm;
+}
+
+/// Getter for the filepath
+inline std::filesystem::path
+GQL::get_filepath() const noexcept {
+  return filepath;
 }

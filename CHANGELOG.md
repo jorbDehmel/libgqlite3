@@ -8,7 +8,12 @@ the remaining digits are the major version. For instance, the
 code `000000003` is equivalent to `0.0.3` and the code
 `123456001` is `123.456.1.`
 
-## `0.2.1` (4/22/2025)
+## `0.2.2`
+- Added getter for filepath
+- Moved CLI into own folder
+- Expanded & refined CLI
+
+## `0.2.1`
 - Changed from `Microsoft` to `LLVM` `clang-format` style
 - Added `Doxyfile`, improved Doxygen support
 - Changed default database path to `:memory:` (memory-only, no

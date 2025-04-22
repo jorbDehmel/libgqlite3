@@ -1,0 +1,30 @@
+// This is a comment
+GQL("foo.db", "true", "false").as("G");
+
+G.v()
+  .erase();
+
+G.add_vertex()
+  .label("Alice");
+G.add_vertex()
+  .label("Bob")
+  .tag("last name", "Crabbit");
+
+G.v()
+  .with_label("Alice")
+  .add_edge(
+    G.v()
+      .with_label("Bob")
+  )
+  .label("is friends with");
+
+G.v()
+  .label()
+  .as("names");
+
+G.e()
+  .label()
+  .as("relations");
+
+G.v().as("all the nodes");
+G.e().as("all the edges");
