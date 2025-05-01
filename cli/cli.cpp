@@ -266,6 +266,36 @@ int main(int c, char *v[]) {
           },
       },
       {
+          "env",
+          [&](OptVarType _what,
+              std::vector<VarType> _args) -> OptVarType {
+            assert(!_what.has_value());
+            assert(_args.empty());
+            dump_variables(variables);
+            return {};
+          },
+      },
+      {
+          "help",
+          [&](OptVarType _what,
+              std::vector<VarType> _args) -> OptVarType {
+            assert(!_what.has_value());
+            assert(_args.empty());
+            print_help();
+
+            std::cout << "All commands:\n";
+            for (const auto &p : operations) {
+              std::cout << " - " << p.first << '\n';
+            }
+            std::cout << '\n'
+                      << "To create a graph G, use "
+                         "`GQL().as(\"G\");`\n"
+                      << "To quit, run `q();`\n";
+
+            return {};
+          },
+      },
+      {
           "filepath",
           [&](OptVarType _what,
               std::vector<VarType> _args) -> OptVarType {
@@ -754,14 +784,30 @@ int main(int c, char *v[]) {
           }
         }
 
-        pos = 0;
-        while (pos < accumulator.size() && is_running) {
-          const auto result = do_stmt(accumulator, pos);
-          assert(accumulator[pos] == ";");
-          ++pos;
-          if (result.has_value()) {
-            print_variable(result.value());
+        try {
+          pos = 0;
+          while (pos < accumulator.size() && is_running) {
+            while (pos < accumulator.size() &&
+                   accumulator.at(pos) == ";") {
+              ++pos;
+            }
+            if (pos >= accumulator.size()) {
+              break;
+            }
+
+            const auto result = do_stmt(accumulator, pos);
+            assert(accumulator[pos] == ";");
+            ++pos;
+            if (result.has_value()) {
+              print_variable(result.value());
+            }
           }
+        } catch (std::runtime_error &e) {
+          std::cout << e.what() << '\n'
+                    << "For help, run `help();`\n";
+        } catch (...) {
+          std::cout << "Unknown error!\n"
+                    << "For help, run `help();`\n";
         }
         accumulator.clear();
       }

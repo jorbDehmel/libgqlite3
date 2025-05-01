@@ -1,5 +1,5 @@
 /**
- * @file gql.hpp
+ * @file gql.hpp / libgqlite3.hpp
  *
  * @author J Dehmel
  *
@@ -76,7 +76,7 @@ const static uint GQL_MAJOR_VERSION = 000;
 const static uint GQL_MINOR_VERSION = 002;
 
 /// The patch (xxx.xxx.PAT) version of GQL
-const static uint GQL_PATCH_VERSION = 002;
+const static uint GQL_PATCH_VERSION = 003;
 
 /**
  * @var GQL_VERSION

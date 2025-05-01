@@ -2,7 +2,7 @@
 ![Test Badge](https://github.com/jorbDehmel/gql/actions/workflows/ci-test.yml/badge.svg)
 
 # GQL / `libgqlite3` (Graph SQLite3)
-Jordan Dehmel, 2024, MIT License
+Jordan Dehmel, 2024 - 2025, MIT License
 
 ## Outline
 
@@ -42,10 +42,12 @@ this software is likely to run slower and be more bug-prone.
 1. Clone this repo locally
 2. Navigate to this directory
 
-### Use Case 1: `#include <gql.hpp>` (system-wide install)
+### Use Case 1: `#include <gql.hpp>` or `#include <gqlite3.hpp>`
+
 3. From this directory, run `make install`
 
 ### Use Case 2: `#include "./gql.hpp"` (casual local install)
+
 3. Simply copy-paste the local file `./src/gql.hpp` anywhere you
     want to use it. This is allowed by the licensing without
     acknowledgment, and the entirety of the MIT license is
