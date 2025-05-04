@@ -8,6 +8,11 @@ the remaining digits are the major version. For instance, the
 code `000000003` is equivalent to `0.0.3` and the code
 `123456001` is `123.456.1.`
 
+## `0.2.4`
+- Added optional `clang-format` and `clang-tidy` dependencies in
+    root `make check` for clarity
+- Removed useless `constexpr` keywords in constructors
+
 ## `0.2.3`
 - Minor documentation modifications
 - Made CLI better, added CLI README.md

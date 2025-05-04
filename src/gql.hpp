@@ -76,7 +76,7 @@ const static uint GQL_MAJOR_VERSION = 000;
 const static uint GQL_MINOR_VERSION = 002;
 
 /// The patch (xxx.xxx.PAT) version of GQL
-const static uint GQL_PATCH_VERSION = 003;
+const static uint GQL_PATCH_VERSION = 004;
 
 /**
  * @var GQL_VERSION
@@ -418,7 +418,7 @@ public:
      * @brief Copy from another instance FROM THE SAME OWNER
      * @param _other The object to copy from
      */
-    inline constexpr Vertices(const Vertices &_other)
+    inline Vertices(const Vertices &_other)
         : owner(_other.owner), cmd(_other.cmd) {
     }
 
@@ -595,7 +595,7 @@ public:
      * @brief Copy from another instance FROM THE SAME OWNER
      * @param _other The object to copy from
      */
-    inline constexpr Edges(const Edges &_other)
+    inline Edges(const Edges &_other)
         : owner(_other.owner), cmd(_other.cmd) {
     }
 

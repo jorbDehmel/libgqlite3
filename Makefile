@@ -15,7 +15,17 @@ check:
 	@g++ -std=c++20 -D DESIRED_VERSION=202000ULL -c -o /dev/null test/assert_version.cpp > /dev/null
 
 	@echo "Checking for dot (graphviz)..."
-	@dot --version > /dev/null
+	@which dot > /dev/null
+
+	@echo "Checking for clang-format (optional)..."
+	@if ! which clang-format > /dev/null ; then \
+		echo "Missing optional dependency clang-format!" ; \
+	fi
+
+	@echo "Checking for clang-tidy (optional)..."
+	@if ! which clang-tidy > /dev/null ; then \
+		echo "Missing optional dependency clang-format!" ; \
+	fi
 
 	@echo "Environment is valid."
 
@@ -23,6 +33,12 @@ check:
 format:
 	find . \( -iname '*.cpp' -or -iname '*.hpp' \) \
 		-exec clang-format -i {} \;
+
+.PHONY:	tidy
+tidy:
+	find . \( -iname '*.cpp' -or -iname '*.hpp' \) \
+		-and -not -iname 'assert_version.cpp' \
+		-exec clang-tidy -extra-arg=-std=c++20 {} \;
 
 .PHONY:	test
 test:

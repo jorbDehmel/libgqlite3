@@ -12,7 +12,8 @@ Unit tests for GQL
 #include <sys/types.h>
 
 // If the two vectors do not match, cause a kernel panic
-inline void assert_eq(const auto &_l, const auto &_r) {
+template <typename L, typename R>
+inline void assert_eq(const L &_l, const R &_r) {
   bool flag = false;
 
   if (_l.size() == _r.size()) {
@@ -98,10 +99,12 @@ void test_set_operations() {
   }
 
   // Basic sets
-  auto a =
-      g.v().where([](auto v) { return v.id().front() <= 3; });
-  auto b =
-      g.v().where([](auto v) { return v.id().front() >= 3; });
+  auto a = g.v().where([](auto v) {
+    return v.id().front() <= 3;
+  });
+  auto b = g.v().where([](auto v) {
+    return v.id().front() >= 3;
+  });
   auto universe = g.v();
 
   auto a_edges = a.out();
@@ -279,9 +282,12 @@ void test_vertex_queries() {
   g.add_vertex(3).label("third");
 
   g.v()
-      .where([](auto v) { return v.id().front() < 3; })
-      .add_edge(g.v().where(
-          [](auto v) { return v.id().front() > 1; }));
+      .where([](auto v) {
+        return v.id().front() < 3;
+      })
+      .add_edge(g.v().where([](auto v) {
+        return v.id().front() > 1;
+      }));
 
   g.v()
       .with_tag("is_first", "true")
@@ -289,14 +295,17 @@ void test_vertex_queries() {
       .tag("is_first", "false");
 
   // Where
-  assert_eq(
-      g.v()
-          .where([](auto v) { return v.id().front() < 2; })
-          .id(),
-      std::list<uint64_t>{1});
+  assert_eq(g.v()
+                .where([](auto v) {
+                  return v.id().front() < 2;
+                })
+                .id(),
+            std::list<uint64_t>{1});
 
   assert(g.v()
-             .where([](auto v) { return v.id().front() > 3; })
+             .where([](auto v) {
+               return v.id().front() > 3;
+             })
              .id()
              .empty());
 
