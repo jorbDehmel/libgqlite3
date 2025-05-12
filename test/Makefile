@@ -1,5 +1,5 @@
 TESTS := test.out readme_ex.out make.out \
-	stress_test.out cpg.out
+	stress_test.out cpg.out non_ascii_test.out
 FORMAT_TESTS := $(TESTS:%.out=%.format.out)
 
 CC := g++ -std=c++20
@@ -10,11 +10,11 @@ LIBS := -lsqlite3
 .PHONY:	all
 all:	$(TESTS) $(FORMAT_TESTS)
 
-%.out:	%.o
+%.out:	%.o ../src/gql.hpp
 	$(CC) $(LFLAGS) -o $@ $^ $(LIBS)
 	@./$@
 
-%.format.out:	%.format.o
+%.format.out:	%.format.o ../src/gql.hpp
 	$(CC) $(LFLAGS) -o $@ $^ $(LIBS)
 	@./$@
 

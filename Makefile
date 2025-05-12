@@ -1,7 +1,7 @@
 .PHONY:	install
 install:	src/gql.hpp
 	sudo cp src/*.hpp /usr/include
-	sudo ln /usr/include/gql.hpp /usr/include/gqlite3.hpp
+	sudo ln -sf /usr/include/gql.hpp /usr/include/gqlite3.hpp
 
 .PHONY:	check
 check:
