@@ -11,11 +11,11 @@ LIBS := -lsqlite3
 all:	$(TESTS) $(FORMAT_TESTS)
 
 %.out:	%.o ../src/gql.hpp
-	$(CC) $(LFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(LFLAGS) -o $@ $< $(LIBS)
 	@./$@
 
 %.format.out:	%.format.o ../src/gql.hpp
-	$(CC) $(LFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(LFLAGS) -o $@ $< $(LIBS)
 	@./$@
 
 %.o:	%.cpp
