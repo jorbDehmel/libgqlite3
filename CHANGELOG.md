@@ -8,6 +8,17 @@ the remaining digits are the major version. For instance, the
 code `000000003` is equivalent to `0.0.3` and the code
 `123456001` is `123.456.1.`
 
+## `0.3.0`
+- Improved documentation for parameters and return values
+- Removed injection-vulnerable `in_degree` and `out_degree`
+    arguments
+- Move injection-vulnerable constructors to protected
+- Made hex decoding and encoding throw in invalid cases
+- Improved label and tag hex encoding to reduce injection
+    vulnerabilities
+- Removed `GQL::dump`
+- Fixed outdated README example
+
 ## `0.2.5`
 - Fixed bug causing non-ASCII characters in graphviz files
 
@@ -21,7 +32,7 @@ code `000000003` is equivalent to `0.0.3` and the code
 - Made CLI better, added CLI README.md
 
 ## `0.2.2`
-- Added getter for filepath
+- Added getter for file path
 - Moved CLI into own folder
 - Expanded & refined CLI
 
@@ -42,20 +53,20 @@ code `000000003` is equivalent to `0.0.3` and the code
     constructors in `Vertices` and `Edges`
 - Reformatted testing Makefile
 - Added `make check` for environment checking
-- Added doxygen to `gql.hpp`
+- Added Doxygen to `gql.hpp`
 
 ## `0.0.5`
-- Added "bouncing" to avoid stack overflows in sqlite
+- Added "bouncing" to avoid stack overflows in SQLite3
 - Added bounce test in unit testing
 
 ## `0.0.4`
 - Added `merge_rows` for results objects, allowing easier
     aggregation
 - Fixed some issues causing g++ pedantic warnings about
-    signedness
+    sign-edness
 - Removed some vestigial "depth" members
 - Added "limit" method to limit the number of results (sorted
-    by id)
+    by ID)
 - Added "excluding" as an easier version of "complement"
 - Added multi-key "tag" query
 - Added "lemma" for executing arbitrary lambdas before
@@ -66,4 +77,4 @@ code `000000003` is equivalent to `0.0.3` and the code
 - Began changelog
 - Added `in_degree` and `out_degree` queries
 - Added `cli` integration test (this is also a functional
-    interpretter w/ variables and queries)
+    interpreter w/ variables and queries)
