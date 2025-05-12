@@ -1,7 +1,7 @@
 CPP = g++ -pedantic -Wall -O3 -g -std=c++20
 
 cli.out:	cli.o ../src/gql.hpp
-	$(CPP) -o $@ $^ -lsqlite3
+	$(CPP) -o $@ $< -lsqlite3
 
 .PHONY:	install
 install:	cli.out
