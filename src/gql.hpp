@@ -23,7 +23,7 @@ your project with no acknowledgement or citation needed.
 
 MIT License
 
-Copyright (c) 2024 Jordan Dehmel
+Copyright (c) 2024-2025 Jordan Dehmel
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
@@ -73,10 +73,10 @@ static_assert(__cplusplus > 201100L, "Invalid C++ std.");
 const static uint GQL_MAJOR_VERSION = 000;
 
 /// The minor (xxx.MIN.xxx) version of GQL
-const static uint GQL_MINOR_VERSION = 002;
+const static uint GQL_MINOR_VERSION = 003;
 
 /// The patch (xxx.xxx.PAT) version of GQL
-const static uint GQL_PATCH_VERSION = 005;
+const static uint GQL_PATCH_VERSION = 000;
 
 /**
  * @var GQL_VERSION
@@ -116,6 +116,7 @@ inline std::string to_string(const std::string &_what) {
  * replaced.
  * @param _args Zero or more arguments to insert into
  * corresponding replacement spots in the format string.
+ * @returns The formatted string
  */
 template <typename... Types>
 std::string __gql_format_str(const std::string &_format,
@@ -199,11 +200,11 @@ std::string __gql_format_str(const std::string &_format,
  * @returns The hexidecimal encoding of the given string
  */
 inline std::string hex_encode(const std::string &_what) {
-  const static char to_hex[] = "0123456789ABCDEF";
+  const static std::string to_hex = "0123456789ABCDEF";
   std::string out;
   for (const char &c : _what) {
-    out.push_back(to_hex[(c >> 4) & 0b1111]);
-    out.push_back(to_hex[c & 0b1111]);
+    out.push_back(to_hex.at((c >> 4) & 0b1111));
+    out.push_back(to_hex.at(c & 0b1111));
   }
   return out;
 }
@@ -214,17 +215,27 @@ inline std::string hex_encode(const std::string &_what) {
  * @returns The string such that hex_encode(returned) == _what
  */
 inline std::string hex_decode(const std::string &_what) {
+  // Map lookup via `.at` ensures we cannot decode non-hex
+  // strings
+  const static std::map<char, uint8_t> char_to_hex = {
+      {'0', 0},  {'1', 1},  {'2', 2},  {'3', 3},
+      {'4', 4},  {'5', 5},  {'6', 6},  {'7', 7},
+      {'8', 8},  {'9', 9},  {'A', 10}, {'B', 11},
+      {'C', 12}, {'D', 13}, {'E', 14}, {'F', 15}};
+
+  if (_what == "NULL") {
+    return _what;
+  }
+
   std::string out;
   for (size_t i = 0; i < _what.size(); i += 2) {
-    uint8_t first = ('0' <= _what[i] && _what[i] <= '9')
-                        ? (_what[i] - '0')
-                        : (10 + (_what[i] - 'A'));
-    uint8_t second =
-        ('0' <= _what[i + 1] && _what[i + 1] <= '9')
-            ? (_what[i + 1] - '0')
-            : (10 + (_what[i + 1] - 'A'));
+    const char a = _what.at(i);
+    const char b = _what.at(i + 1);
+    uint8_t first = char_to_hex.at(a);
+    uint8_t second = char_to_hex.at(b);
     out.push_back((first << 4) | second);
   }
+
   return out;
 }
 
@@ -358,6 +369,7 @@ public:
     /**
      * @brief Returns the index of the given column (given
      * that it exists)
+     * @param _what The header to find the index of
      * @returns The index such that headers.at(index) ==
      * _what
      */
@@ -392,7 +404,6 @@ public:
     /// the query
     std::string cmd;
 
-  public:
     /**
      * @brief Construct a Vertices object from some SQL
      * query. Bounces may happen herein.
@@ -403,6 +414,9 @@ public:
      */
     Vertices(GQL *const _owner, const std::string &_cmd);
 
+    friend class GQL;
+
+  public:
     /**
      * @brief Copy from another instance FROM THE SAME OWNER
      * @param _other The object to copy from
@@ -448,7 +462,11 @@ public:
     Vertices with_tag(const std::string &_key,
                       const std::string &_value) const;
 
-    /// Select all vertices with the given id
+    /**
+     * @brief Select all vertices with the given id
+     * @param _id The ID to find
+     * @returns Zero or one node with the given ID
+     */
     Vertices with_id(const uint64_t &_id) const;
 
     /// Select all vertices for which the given lambda
@@ -472,7 +490,10 @@ public:
     /// the given subgroup
     Vertices excluding(const Vertices &_subgroup) const;
 
-    /// Select the label from all nodes in this set
+    /**
+     * @brief Select the label from all nodes in this set
+     * @returns The labels of all vertices in this set
+     */
     Result label() const;
 
     /// Select the value associated with the given key for
@@ -483,7 +504,10 @@ public:
     /// all vertices in this set
     Result tag(const std::list<std::string> &_keys) const;
 
-    /// Get the set of all keys
+    /**
+     * @brief Get the set of all keys
+     * @returns All keys that have values for these edges
+     */
     std::list<std::string> keys() const;
 
     /// Select the id of all vertices in this set
@@ -538,16 +562,16 @@ public:
     Vertices with_out_degree(const uint64_t &_count) const;
 
     /// Gets the in-degrees of the given nodes
-    Result
-    in_degree(const std::string &_where_edge = "1") const;
+    Result in_degree() const;
 
     /// Gets the out-degrees of the given nodes
-    Result
-    out_degree(const std::string &_where_edge = "1") const;
+    Result out_degree() const;
 
     /**
      * @brief Break into a std::list where each entry is a
      * single vertex. This is useful for foreach operations.
+     * @returns An itemized version of this set where each entry
+     * is a single node.
      */
     std::list<Vertices> each() const;
 
@@ -569,7 +593,6 @@ public:
     /// the query
     std::string cmd;
 
-  public:
     /**
      * @brief Construct an Edges object from some SQL
      * query. Bounces may happen herein.
@@ -580,6 +603,9 @@ public:
      */
     Edges(GQL *const _owner, const std::string &_cmd);
 
+    friend class GQL;
+
+  public:
     /**
      * @brief Copy from another instance FROM THE SAME OWNER
      * @param _other The object to copy from
@@ -606,10 +632,20 @@ public:
      */
     Edges limit(const uint64_t &_n) const;
 
-    /// Select all edges with their source in the given set
+    /**
+     * @brief Select all edges with their source in the given
+     * set. This is equivalent to `_source.out()`.
+     * @param _source A set of vertices
+     * @returns All edges leading out from _source
+     */
     Edges with_source(const GQL::Vertices &_source) const;
 
-    /// Select all edges with their target in the given set
+    /**
+     * @brief Select all edges with their target in the given
+     * set. This is equivalent to `_source.in()`.
+     * @param _source A set of vertices
+     * @returns All edges leading into _source
+     */
     Edges with_target(const GQL::Vertices &_source) const;
 
     /**
@@ -631,45 +667,94 @@ public:
     Edges with_tag(const std::string &_key,
                    const std::string &_value) const;
 
-    /// Get all edges which have the given id
+    /**
+     * @brief Get all edges which have the given id
+     * @param _id The ID to find
+     * @returns Zero or one edge with this ID
+     */
     Edges with_id(const uint64_t &_id) const;
 
-    /// Select all vertices for which the given lambda
-    /// returns true
+    /**
+     * @brief Select all vertices for which the given lambda
+     * returns true
+     * @param _fn The fn to run all edges through
+     * @returns A set of edges where _fn returned true
+     */
     Edges where(const std::function<bool(const Edges &)> &_fn);
 
-    /// Return all values which are in either this set or
-    /// the passed one or both
+    /**
+     * @brief Return all values which are in either this set or
+     * the passed one or both
+     * @param _other The other set
+     * @returns This set, inclusively unioned with the other
+     */
     Edges join(const Edges &_other) const;
 
-    /// Return all values which are in both this set and the
-    /// passed one
+    /**
+     * @brief Return all values which are in both this set and
+     * the other
+     * @param _other The other set, which all returned values
+     * must also be in
+     * @returns The set of edges in both this and the other
+     */
     Edges intersection(const Edges &_other) const;
 
-    /// Return all values which are in the passed set but
-    /// not in this set
+    /**
+     * @brief Return all values which are in the passed set but
+     * not in this set
+     * @param _universe The set of all edges, from which this
+     * set will be excluded
+     * @returns All edges in _universe, minus any that are in
+     * this
+     */
     Edges complement(const Edges &_universe) const;
 
-    /// Return all values which are in this set but not in
-    /// the subgroup
-    Edges excluding(const Edges &_subgroup) const;
+    /**
+     * @brief Return all values which are in this set but not in
+     * the given set
+     * @param _other The other set, which none of the returned
+     * values shall be in
+     * @returns Any edges in this which are not in _other
+     */
+    Edges excluding(const Edges &_other) const;
 
-    /// Get the label of all edges in this set
+    /**
+     * @brief Get the label of all edges in this set
+     * @returns The labels of all edges in this set
+     */
     Result label() const;
 
-    /// Get the values associated with the given key
+    /**
+     * @brief Get the values associated with the given key
+     * @param _key The tag key to check
+     * @returns A SQL result representing the output
+     */
     Result tag(const std::string &_key) const;
 
-    /// Get the values associated with the given keys
+    /**
+     * @brief Get the values associated with the given keys
+     * @param _keys The set of keys to fetch
+     * @returns The values associated with those keys
+     */
     Result tag(const std::list<std::string> &_keys) const;
 
-    /// Get the set of all keys
+    /**
+     * @brief Get all keys which have values
+     * @returns The set of all keys
+     */
     std::list<std::string> keys() const;
 
-    /// Select the id of all edges in this set
+    /**
+     * @brief Select the id of all edges in this set
+     * @returns All the IDs
+     */
     std::list<uint64_t> id() const;
 
-    /// Set the label of these edges
+    /**
+     * @brief Set the label of these edges
+     * @param _label The label to SET for all these edges
+     * @returns These edges, after having their labels set
+     */
     Edges label(const std::string &_label);
 
     /**
@@ -716,6 +801,8 @@ public:
     /**
      * @brief Break into a std::list where each entry is a
      * single edge. This is useful for foreach operations.
+     * @returns An itemized version of this set, where each
+     * entry is a single edge
      */
     std::list<Edges> each() const;
   };
@@ -734,15 +821,19 @@ public:
       const bool &_erase = false,
       const bool &_persistent = true);
 
-  /**
-   * @brief Closes the database, possibly purging its file
-   */
+  /// Closes the database, possibly purging its file
   ~GQL();
 
-  /// Get the set of all vertices
+  /**
+   * @brief Get the set of all vertices
+   * @returns A Vertices object containing all known vertices
+   */
   Vertices v();
 
-  /// Get the set of all edges
+  /**
+   * @brief Get the set of all edges
+   * @returns The set of all edges in the graph
+   */
   Edges e();
 
   /**
@@ -751,13 +842,6 @@ public:
    * @param _filepath Where to save the graph representation
    */
   void graphviz(const std::filesystem::path &_filepath);
-
-  /**
-   * @brief Dump enough information about the graph to be
-   * useful for debugging to the given output stream.
-   * @param _into The stream to dump to
-   */
-  void dump(std::ostream &_into);
 
   /// Commit the database and open a new transaction
   void commit();
@@ -796,17 +880,33 @@ public:
   /// normal resolution)
   uint64_t sql_call_counter = 0;
 
-  /// Getter for the filepath
+  /**
+   * @brief Getter for the filepath
+   * @returns The filepath (or ":memory:") used to construct
+   * this graph object
+   */
   std::filesystem::path get_filepath() const noexcept;
 
 protected:
-  /// Get all vertices where some SQL WHERE clause holds
+  /**
+   * @brief Get all vertices where some SQL WHERE clause holds
+   * @param _where The SQL clause to use
+   * @returns All vertices where the SQL clause holds
+   */
   Vertices v(const std::string &_where);
 
-  /// Get all edges where some SQL WHERE clause holds
+  /**
+   * @brief Get all edges where some SQL WHERE clause holds
+   * @param _where The SQL clause to use
+   * @returns All edges where the SQL clause holds
+   */
   Edges e(const std::string &_where);
 
-  /// Execute the given sql and return the results
+  /**
+   * @brief Execute the given sql and return the results
+   * @param _sql The SQL statement to run via SQLite3
+   * @returns An object containing the SQL query results
+   */
   Result sql(const std::string &_sql);
 
   /// A pointer to the underlying SQLite3 instance
@@ -935,17 +1035,17 @@ GQL::Vertices::with_label(const std::string &_label) const {
   return GQL::Vertices(
       owner, __gql_format_str("SELECT * FROM ({}) WHERE "
                               "label = '{}'",
-                              cmd, _label));
+                              cmd, hex_encode(_label)));
 }
 
 inline GQL::Vertices
 GQL::Vertices::with_tag(const std::string &_key,
                         const std::string &_value) const {
   return GQL::Vertices(
-      owner,
-      __gql_format_str("SELECT * FROM ({}) WHERE "
-                       "json_extract(tags, '$.{}') = '{}'",
-                       cmd, hex_encode(_key), _value));
+      owner, __gql_format_str(
+                 "SELECT * FROM ({}) WHERE "
+                 "json_extract(tags, '$.{}') = '{}'",
+                 cmd, hex_encode(_key), hex_encode(_value)));
 }
 
 inline GQL::Vertices
@@ -1003,19 +1103,33 @@ GQL::Vertices::excluding(const GQL::Vertices &_subgroup) const {
 }
 
 inline GQL::Result GQL::Vertices::label() const {
-  return owner->sql(
+  auto raw = owner->sql(
       __gql_format_str("SELECT id, label AS label FROM "
                        "({}) ORDER BY id;",
                        cmd));
+
+  // Hex decode
+  for (uint i = 0; i < raw.body.size(); ++i) {
+    raw.body.at(i).at(1) = hex_decode(raw.body.at(i).at(1));
+  }
+  return raw;
 }
 
 inline GQL::Result
 GQL::Vertices::tag(const std::string &_key) const {
-  return owner->sql(
-      __gql_format_str("SELECT id, "
-                       "json_extract(tags, '$.{}') AS '{}' "
-                       "FROM ({}) ORDER BY id;",
-                       hex_encode(_key), _key, cmd));
+  auto raw =
+      owner->sql(__gql_format_str("SELECT id, "
+                                  "json_extract(tags, '$.{}') "
+                                  "FROM ({}) ORDER BY id;",
+                                  hex_encode(_key), cmd));
+
+  if (!raw.empty()) {
+    raw.headers.at(1) = _key;
+    for (uint i = 0; i < raw.body.size(); ++i) {
+      raw.body.at(i).at(1) = hex_decode(raw.body.at(i).at(1));
+    }
+  }
+  return raw;
 }
 
 inline GQL::Result
@@ -1033,14 +1147,37 @@ GQL::Vertices::tag(const std::list<std::string> &_keys) const {
     if (key == "id" || key == "label") {
       subcommand += key;
     } else {
+      const auto encoded = hex_encode(key);
       subcommand +=
           __gql_format_str("json_extract(tags, '$.{}') AS '{}'",
-                           hex_encode(key), key);
+                           encoded, encoded);
     }
   }
 
-  return owner->sql(__gql_format_str(
+  auto raw = owner->sql(__gql_format_str(
       "SELECT {} FROM ({}) ORDER BY id;", subcommand, cmd));
+
+  // Titles need decoded unless they are "id" or "label"
+  for (uint i = 0; i < raw.headers.size(); ++i) {
+    const auto title = raw.headers.at(i);
+    if (title != "id" && title != "label") {
+      raw.headers[i] = hex_decode(title);
+    }
+  }
+
+  // Row entries need decoded unless they are in the "id" column
+  for (uint col = 0; col < raw.headers.size(); ++col) {
+    if (raw.headers.at(col) == "id") {
+      continue;
+    }
+
+    for (uint row = 0; row < raw.body.size(); ++row) {
+      raw.body.at(row).at(col) =
+          hex_decode(raw.body.at(row).at(col));
+    }
+  }
+
+  return raw;
 }
 
 inline std::list<std::string> GQL::Vertices::keys() const {
@@ -1071,7 +1208,7 @@ GQL::Vertices::label(const std::string &_label) {
   owner->sql(__gql_format_str(
       "UPDATE nodes SET label = '{}' WHERE id IN "
       "(SELECT id FROM ({}))",
-      _label, cmd));
+      hex_encode(_label), cmd));
 
   return *this;
 }
@@ -1082,7 +1219,7 @@ GQL::Vertices::tag(const std::string &_key,
   owner->sql(__gql_format_str(
       "UPDATE nodes SET tags = json_set(tags, '$.{}', '{}') "
       "WHERE id IN (SELECT id FROM ({}))",
-      hex_encode(_key), _value, cmd));
+      hex_encode(_key), hex_encode(_value), cmd));
 
   return *this;
 }
@@ -1149,30 +1286,28 @@ GQL::Vertices::with_out_degree(const uint64_t &_count) const {
                  cmd, _count));
 }
 
-inline GQL::Result
-GQL::Vertices::in_degree(const std::string &_where_edge) const {
+inline GQL::Result GQL::Vertices::in_degree() const {
   return owner->sql(__gql_format_str(
       "WITH n AS ({}) "
       "SELECT t.id AS id, t.c AS in_degree FROM ("
       "SELECT n.id AS id, COUNT(e.id) AS c "
-      "FROM n LEFT JOIN (SELECT * FROM edges WHERE {}) e "
+      "FROM n LEFT JOIN (SELECT * FROM edges) e "
       "ON e.target = n.id "
       "GROUP BY n.id) t "
       "ORDER BY id;",
-      cmd, _where_edge));
+      cmd));
 }
 
-inline GQL::Result GQL::Vertices::out_degree(
-    const std::string &_where_edge) const {
+inline GQL::Result GQL::Vertices::out_degree() const {
   return owner->sql(__gql_format_str(
       "WITH n AS ({}) "
       "SELECT t.id AS id, t.c AS out_degree FROM ("
       "SELECT n.id AS id, COUNT(e.id) AS c "
-      "FROM n LEFT JOIN (SELECT * FROM edges WHERE {}) e "
+      "FROM n LEFT JOIN (SELECT * FROM edges) e "
       "ON e.source = n.id "
       "GROUP BY n.id) t "
       "ORDER BY id;",
-      cmd, _where_edge));
+      cmd));
 }
 
 inline std::list<GQL::Vertices> GQL::Vertices::each() const {
@@ -1248,17 +1383,17 @@ GQL::Edges::with_label(const std::string &_label) const {
   return GQL::Edges(owner,
                     __gql_format_str("SELECT * FROM ({}) WHERE "
                                      "label = '{}'",
-                                     cmd, _label));
+                                     cmd, hex_encode(_label)));
 }
 
 inline GQL::Edges
 GQL::Edges::with_tag(const std::string &_key,
                      const std::string &_value) const {
   return GQL::Edges(
-      owner,
-      __gql_format_str("SELECT * FROM ({}) WHERE "
-                       "json_extract(tags, '$.{}') = '{}'",
-                       cmd, hex_encode(_key), _value));
+      owner, __gql_format_str(
+                 "SELECT * FROM ({}) WHERE "
+                 "json_extract(tags, '$.{}') = '{}'",
+                 cmd, hex_encode(_key), hex_encode(_value)));
 }
 
 inline GQL::Edges
@@ -1315,17 +1450,31 @@ GQL::Edges::excluding(const GQL::Edges &_subgroup) const {
 }
 
 inline GQL::Result GQL::Edges::label() const {
-  return owner->sql(__gql_format_str(
+  auto raw = owner->sql(__gql_format_str(
       "SELECT id, label FROM ({}) ORDER BY id;", cmd));
+
+  // Hex decode
+  for (uint i = 0; i < raw.body.size(); ++i) {
+    raw.body.at(i).at(1) = hex_decode(raw.body.at(i).at(1));
+  }
+  return raw;
 }
 
 inline GQL::Result
 GQL::Edges::tag(const std::string &_key) const {
-  return owner->sql(
-      __gql_format_str("SELECT id, "
-                       "json_extract(tags, '$.{}') "
-                       "AS '{}' FROM ({}) ORDER BY id;",
-                       hex_encode(_key), _key, cmd));
+  auto raw =
+      owner->sql(__gql_format_str("SELECT id, "
+                                  "json_extract(tags, '$.{}') "
+                                  "FROM ({}) ORDER BY id;",
+                                  hex_encode(_key), cmd));
+
+  if (!raw.empty()) {
+    raw.headers.at(1) = _key;
+    for (uint i = 0; i < raw.body.size(); ++i) {
+      raw.body.at(i).at(1) = hex_decode(raw.body.at(i).at(1));
+    }
+  }
+  return raw;
 }
 
 inline GQL::Result
@@ -1344,14 +1493,40 @@ GQL::Edges::tag(const std::list<std::string> &_keys) const {
         key == "target") {
       subcommand += key;
     } else {
-      subcommand +=
-          __gql_format_str("json_extract(tags, '$.{}') AS '{}'",
-                           hex_encode(key), key);
+      subcommand += __gql_format_str(
+          "json_extract(tags, '$.{}')", hex_encode(key));
     }
   }
 
-  return owner->sql(__gql_format_str(
+  auto raw = owner->sql(__gql_format_str(
       "SELECT {} FROM ({}) ORDER BY id;", subcommand, cmd));
+
+  // Titles need decoded unless they are "id", "source",
+  // "target", or "label"
+  for (uint i = 0; i < raw.headers.size(); ++i) {
+    const auto title = raw.headers.at(i);
+    if (title != "id" && title != "label" &&
+        title != "source" && title != "target") {
+      raw.headers[i] = hex_decode(title);
+    }
+  }
+
+  // Row entries need decoded unless they are in the "id",
+  // "source", or "target" columns
+  for (uint col = 0; col < raw.headers.size(); ++col) {
+    if (raw.headers.at(col) == "id" ||
+        raw.headers.at(col) == "source" ||
+        raw.headers.at(col) == "target") {
+      continue;
+    }
+
+    for (uint row = 0; row < raw.body.size(); ++row) {
+      raw.body.at(row).at(col) =
+          hex_decode(raw.body.at(row).at(col));
+    }
+  }
+
+  return raw;
 }
 
 inline std::list<std::string> GQL::Edges::keys() const {
@@ -1380,7 +1555,7 @@ inline GQL::Edges GQL::Edges::label(const std::string &_label) {
   owner->sql(__gql_format_str(
       "UPDATE edges SET label = '{}' WHERE id IN "
       "(SELECT id FROM ({}))",
-      _label, cmd));
+      hex_encode(_label), cmd));
 
   return *this;
 }
@@ -1390,7 +1565,7 @@ inline GQL::Edges GQL::Edges::tag(const std::string &_key,
   owner->sql(__gql_format_str(
       "UPDATE edges SET tags = json_set(tags, '$.{}', '{}') "
       "WHERE id IN (SELECT id FROM ({}))",
-      hex_encode(_key), _value, cmd));
+      hex_encode(_key), hex_encode(_value), cmd));
 
   return *this;
 }
@@ -1530,13 +1705,12 @@ inline GQL::Result GQL::sql(const std::string &_stmt) {
   return out;
 }
 
-inline void GQL::dump(std::ostream &_into) {
-  _into << sql("SELECT * FROM nodes;") << "\n\n"
-        << sql("SELECT * FROM edges;") << "\n";
-}
-
 inline void
 GQL::graphviz(const std::filesystem::path &_filepath) {
+  // Note: Since this uses other functions and does not directly
+  // use SQL calls, we don't have to worry about hex encoding AT
+  // ALL!
+
   const static auto sanitize = [](std::string &_w) -> void {
     for (uint64_t i = 0; i < _w.size(); ++i) {
       switch (_w[i]) {
@@ -1608,7 +1782,7 @@ GQL::graphviz(const std::filesystem::path &_filepath) {
         if (!tags.empty()) {
           tags += ",";
         }
-        tags += std::string("\"") + hex_decode(item.at(0)) +
+        tags += std::string("\"") + item.at(0) +
                 std::string("\": \"") + item.at(1) +
                 std::string("\"");
       }
