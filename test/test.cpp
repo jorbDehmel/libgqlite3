@@ -311,8 +311,6 @@ void test_vertex_queries() {
 
   g.graphviz("vertex_queries.dot");
 
-  g.dump(std::cout);
-
   // Traversing with labels and tags
   assert_eq(g.v().with_label("second").id(),
             std::list<uint64_t>{2});
