@@ -8,6 +8,9 @@ the remaining digits are the major version. For instance, the
 code `000000003` is equivalent to `0.0.3` and the code
 `123456001` is `123.456.1.`
 
+## `0.2.5`
+- Fixed bug causing non-ASCII characters in graphviz files
+
 ## `0.2.4`
 - Added optional `clang-format` and `clang-tidy` dependencies in
     root `make check` for clarity

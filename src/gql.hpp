@@ -76,7 +76,7 @@ const static uint GQL_MAJOR_VERSION = 000;
 const static uint GQL_MINOR_VERSION = 002;
 
 /// The patch (xxx.xxx.PAT) version of GQL
-const static uint GQL_PATCH_VERSION = 004;
+const static uint GQL_PATCH_VERSION = 005;
 
 /**
  * @var GQL_VERSION
@@ -1578,7 +1578,7 @@ GQL::graphviz(const std::filesystem::path &_filepath) {
         if (!tags.empty()) {
           tags += ",";
         }
-        tags += "\"" + hex_decode(key) + "\": \"" +
+        tags += "\"" + key + "\": \"" +
                 nodes_tags[key].at(index) + "\"";
       }
       tags = "{" + tags + "}";
