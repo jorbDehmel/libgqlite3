@@ -8,6 +8,9 @@ the remaining digits are the major version. For instance, the
 code `000000003` is equivalent to `0.0.3` and the code
 `123456001` is `123.456.1.`
 
+## `0.3.1`
+- Improved Doxygen
+
 ## `0.3.0`
 - Improved documentation for parameters and return values
 - Removed injection-vulnerable `in_degree` and `out_degree`

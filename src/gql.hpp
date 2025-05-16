@@ -76,7 +76,7 @@ const static uint GQL_MAJOR_VERSION = 000;
 const static uint GQL_MINOR_VERSION = 003;
 
 /// The patch (xxx.xxx.PAT) version of GQL
-const static uint GQL_PATCH_VERSION = 000;
+const static uint GQL_PATCH_VERSION = 001;
 
 /**
  * @var GQL_VERSION
@@ -469,25 +469,46 @@ public:
      */
     Vertices with_id(const uint64_t &_id) const;
 
-    /// Select all vertices for which the given lambda
-    /// returns true
+    /**
+     * @brief Select all vertices for which the given lambda
+     * returns true
+     * @param _fn The predicate to use to distinguish groups
+     * @returns The set of vertices for which _fn returns true
+     */
     Vertices
     where(const std::function<bool(const Vertices &)> &_fn);
 
-    /// Select all vertices which are in this, the passed
-    /// set, or both
+    /**
+     * @brief Select all vertices which are in this, the passed
+     * set, or both
+     * @param _other The other set
+     * @returns Any nodes which are in either or both
+     */
     Vertices join(const Vertices &_other) const;
 
-    /// Select all vertices which are in both this and the
-    /// passed set
+    /**
+     * @brief Select all vertices which are in both this and
+     * the passed set
+     * @param _other The other set
+     * @returns The subset of this set which is also in _other
+     */
     Vertices intersection(const Vertices &_other) const;
 
-    /// Select all vertices which are in the universe set
-    /// but not this set
+    /**
+     * @brief Select all vertices which are in the universe set
+     * but not this set
+     * @param _universe The "universe" to exclude all of our
+     * nodes from
+     * @return That group, minus this group
+     */
     Vertices complement(const Vertices &_universe) const;
 
-    /// Select all vertices which are in this set but not
-    /// the given subgroup
+    /**
+     * @brief Select all vertices which are in this set but not
+     * the given subgroup
+     * @param _subgroup Any vertices herein will not be output
+     * @returns This group, minus that group
+     */
     Vertices excluding(const Vertices &_subgroup) const;
 
     /**
@@ -496,12 +517,21 @@ public:
      */
     Result label() const;
 
-    /// Select the value associated with the given key for
-    /// all vertices in this set
+    /**
+     * @brief Select the value associated with the given key
+     * for all vertices in this set
+     * @param _key The single key to fetch
+     * @returns The values associated with that key for ecah
+     * node
+     */
     Result tag(const std::string &_key) const;
 
-    /// Select the value associated with the given keys for
-    /// all vertices in this set
+    /**
+     * @brief Select the value associated with the given keys
+     * for all vertices in this set
+     * @param _keys The set of keys to fetch
+     * @returns The associated values for every node
+     */
     Result tag(const std::list<std::string> &_keys) const;
 
     /**
@@ -510,10 +540,17 @@ public:
      */
     std::list<std::string> keys() const;
 
-    /// Select the id of all vertices in this set
+    /**
+     * @brief Select the id of all vertices in this set
+     * @returns All IDs within this set
+     */
     std::list<uint64_t> id() const;
 
-    /// Set the label associated with all the nodes herein
+    /**
+     * @brief Set the label associated with all the nodes herein
+     * @param _label The label to set
+     * @returns These nodes after the operation is performed
+     */
     Vertices label(const std::string &_label);
 
     /**
@@ -545,26 +582,52 @@ public:
      */
     Vertices lemma(const std::function<void(Vertices)> _fn);
 
-    /// Add edges from each node in this set to each node
-    /// in the passed set (cartesian product).
+    /**
+     * @brief Add edges from each node in this set to each node
+     * in the passed set (cartesian product).
+     * @param _to The target nodes
+     * @returns The edges which were added
+     */
     Edges add_edge(const Vertices &_to) const;
 
-    /// Get all edges leading into these vertices
+    /**
+     * @brief Get all edges leading into these vertices
+     * @returns The edges leading into these nodes
+     */
     Edges in() const;
 
-    /// Get all edges leading out of these vertices
+    /**
+     * @brief Get all edges leading out of these vertices
+     * @returns The edges leading out of these nodes
+     */
     Edges out() const;
 
-    /// Gets only the vertices with the given in degree
+    /**
+     * @brief Gets only the vertices with the given in-degree
+     * @param _count The desired in-degree
+     * @returns All vertices in this set with the given
+     * in-degree
+     */
     Vertices with_in_degree(const uint64_t &_count) const;
 
-    /// Gets only the vertices with the given out degree
+    /**
+     * @brief Gets only the vertices with the given out-degree
+     * @param _count The desired out-degree
+     * @returns All vertices in this set with the given
+     * out-degree
+     */
     Vertices with_out_degree(const uint64_t &_count) const;
 
-    /// Gets the in-degrees of the given nodes
+    /**
+     * @brief Gets the in-degrees of the given nodes
+     * @returns The in-degrees of the nodes
+     */
     Result in_degree() const;
 
-    /// Gets the out-degrees of the given nodes
+    /**
+     * @brief Gets the out-degrees of the given nodes
+     * @returns The out-degrees of the nodes
+     */
     Result out_degree() const;
 
     /**
