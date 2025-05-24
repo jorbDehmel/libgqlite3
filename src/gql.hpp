@@ -76,7 +76,7 @@ const static uint GQL_MAJOR_VERSION = 000;
 const static uint GQL_MINOR_VERSION = 003;
 
 /// The patch (xxx.xxx.PAT) version of GQL
-const static uint GQL_PATCH_VERSION = 001;
+const static uint GQL_PATCH_VERSION = 002;
 
 /**
  * @var GQL_VERSION
@@ -1779,8 +1779,10 @@ GQL::graphviz(const std::filesystem::path &_filepath) {
       switch (_w[i]) {
       case '"':
         _w.replace(i, 1, "\\\"");
+        break;
       case '\\':
         ++i;
+        break;
       }
     }
   };
