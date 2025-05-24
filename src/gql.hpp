@@ -1779,6 +1779,7 @@ GQL::graphviz(const std::filesystem::path &_filepath) {
       switch (_w[i]) {
       case '"':
         _w.replace(i, 1, "\\\"");
+        ++i;
         break;
       case '\\':
         ++i;
