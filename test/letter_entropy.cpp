@@ -10,12 +10,13 @@
  -> log_2(Count(abc) / Count(abcd)) = n
  */
 
+#include "../src/gql.hpp"
+
 #include <cctype>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <fstream>
-#include <gqlite3.hpp>
 #include <stack>
 #include <string>
 
