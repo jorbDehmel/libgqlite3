@@ -76,7 +76,7 @@ const static uint GQL_MAJOR_VERSION = 000;
 const static uint GQL_MINOR_VERSION = 003;
 
 /// The patch (xxx.xxx.PAT) version of GQL
-const static uint GQL_PATCH_VERSION = 002;
+const static uint GQL_PATCH_VERSION = 003;
 
 /**
  * @var GQL_VERSION
@@ -349,13 +349,25 @@ public:
       return body.end();
     }
 
-    // Get the number of items in this result
     /**
      * @brief Return the number of rows in the result
      * @returns The size of the underlying result body
      */
     inline size_t size() const noexcept {
       return body.size();
+    }
+
+    /**
+     * @brief Assert that this is a single-entry query on a
+     * single node, then return that result
+     * @returns This as a string, after asserting safety
+     */
+    inline operator std::string() const noexcept {
+      if (body.size() != 1 || body[0].size() == 2) {
+        return "NULL";
+      }
+      const auto id_index = index_of("id");
+      return body[0][id_index == 0 ? 1 : 0];
     }
 
     /**
@@ -545,6 +557,16 @@ public:
      * @returns All IDs within this set
      */
     std::list<uint64_t> id() const;
+
+    /**
+     * @brief Returns whether this set is empty
+     */
+    bool empty() const;
+
+    /**
+     * @brief Returns whether this set is non-empty
+     */
+    bool exists() const;
 
     /**
      * @brief Set the label associated with all the nodes herein
@@ -812,6 +834,16 @@ public:
      * @returns All the IDs
      */
     std::list<uint64_t> id() const;
+
+    /**
+     * @brief Returns whether this set is empty
+     */
+    bool empty() const;
+
+    /**
+     * @brief Returns whether this set is non-empty
+     */
+    bool exists() const;
 
     /**
      * @brief Set the label of these edges
@@ -1266,6 +1298,14 @@ inline std::list<uint64_t> GQL::Vertices::id() const {
   return out;
 }
 
+inline bool GQL::Vertices::empty() const {
+  return id().empty();
+}
+
+inline bool GQL::Vertices::exists() const {
+  return !empty();
+}
+
 inline GQL::Vertices
 GQL::Vertices::label(const std::string &_label) {
   owner->sql(__gql_format_str(
@@ -1612,6 +1652,14 @@ inline std::list<uint64_t> GQL::Edges::id() const {
     out.push_back(std::stoull(id));
   }
   return out;
+}
+
+inline bool GQL::Edges::empty() const {
+  return id().empty();
+}
+
+inline bool GQL::Edges::exists() const {
+  return !empty();
 }
 
 inline GQL::Edges GQL::Edges::label(const std::string &_label) {

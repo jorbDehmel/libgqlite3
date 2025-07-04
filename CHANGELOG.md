@@ -8,6 +8,11 @@ the remaining digits are the major version. For instance, the
 code `000000003` is equivalent to `0.0.3` and the code
 `123456001` is `123.456.1.`
 
+## `0.3.3`
+- Added cast to `std::string` from `GQL::Result`
+- Added `empty()` and `exists()` functions for vertices and
+    edges
+
 ## `0.3.2`
 - Fixed accidental lack of `break` in switch statement in
     `GQL::graphviz::sanitize` which caused quote issues and
